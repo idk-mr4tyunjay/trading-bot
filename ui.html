@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>Trading Bot</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #16181d; --muted: #6b7280; --line: #e5e7eb;
+    --green: #0f9d58; --red: #d93025; --amber: #b7791f; --accent: #3b5bdb; --chip: #eef1f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1115; --card: #181b22; --text: #e8eaed; --muted: #9aa0a6; --line: #2a2e37;
+            --green: #34c77b; --red: #f26b5e; --amber: #f0b429; --accent: #7b93ff; --chip: #222631; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+         padding: env(safe-area-inset-top) 0 calc(24px + env(safe-area-inset-bottom)); }
+  main { max-width: 640px; margin: 0 auto; padding: 12px 16px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; background: var(--chip); }
+  .pill.live { background: var(--red); color: #fff; } .pill.testnet { background: var(--amber); color: #000; }
+  .up { color: var(--green); } .down { color: var(--red); }
+  .big { font-size: 34px; font-weight: 700; letter-spacing: -.02em; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; background: var(--green); margin-right: 6px; }
+  .dot.stale { background: var(--red); }
+  .banner { background: var(--amber); color: #000; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; font-weight: 600; }
+  .banner.err { background: var(--red); color: #fff; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 10px 14px; min-height: 44px;
+           background: var(--chip); color: var(--text); cursor: pointer; }
+  button.primary { background: var(--accent); color: #fff; } button.danger { background: var(--red); color: #fff; }
+  button.small { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .item { padding: 10px 0; border-top: 1px solid var(--line); } .item:first-of-type { border-top: 0; padding-top: 0; }
+  .bar { height: 6px; background: var(--chip); border-radius: 3px; position: relative; margin: 6px 0; }
+  .bar i { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+  .bar b { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); }
+  .factors { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .factors span { font-size: 12px; background: var(--chip); padding: 2px 7px; border-radius: 6px; }
+  svg { width: 100%; height: 70px; display: block; }
+  pre { font-size: 11px; line-height: 1.35; white-space: pre-wrap; word-break: break-all; max-height: 360px; overflow: auto; margin: 0; color: var(--muted); }
+  details summary { cursor: pointer; font-weight: 600; padding: 4px 0; min-height: 32px; }
+  fieldset { border: 1px solid var(--line); border-radius: 10px; margin: 0 0 10px; padding: 8px 12px; }
+  legend { font-weight: 700; font-size: 13px; padding: 0 4px; }
+  label { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; font-size: 14px; }
+  label small { display: block; color: var(--muted); font-size: 12px; }
+  input, select { font: inherit; font-size: 16px; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--line);
+                  background: var(--bg); color: var(--text); width: 46%; min-width: 0; }
+  input[type=checkbox] { width: 22px; height: 22px; }
+  input.wide { width: 100%; } label.stack { flex-direction: column; align-items: stretch; }
+  .sticky { position: sticky; bottom: 0; background: var(--card); padding-top: 10px; }
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--text); color: var(--bg);
+           padding: 10px 16px; border-radius: 10px; font-weight: 600; display: none; max-width: 90vw; z-index: 9; }
+</style>
+</head>
+<body>
+<main>
+  <div class="row" style="margin-bottom:10px">
+    <div><span class="dot" id="dot"></span><span id="updated" class="muted">connecting…</span></div>
+    <div><span class="pill" id="mode">–</span> <span class="pill" id="interval">–</span></div>
+  </div>
+  <div id="banners"></div>
+
+  <section class="card">
+    <div class="row"><h2>Equity</h2><span class="muted" id="aiSpend"></span></div>
+    <div class="big num" id="equity">–</div>
+    <div class="row muted num"><span id="dayPnl"></span><span id="peak"></span></div>
+    <svg id="spark" viewBox="0 0 300 70" preserveAspectRatio="none"></svg>
+    <div class="btns" style="margin-top:10px">
+      <button id="pauseBtn" onclick="togglePause()">Pause entries</button>
+      <button class="danger" onclick="cmd('close_all', null, 'Close ALL positions now?')">Close all</button>
+    </div>
+  </section>
+
+  <section class="card"><h2>Open positions</h2><div id="positions" class="muted">None</div></section>
+  <section class="card"><h2>Signals (latest closed bar)</h2><div id="signals" class="muted">Waiting for first bar…</div></section>
+  <section class="card"><h2>Recent trades</h2><div id="closed" class="muted">None yet</div></section>
+  <section class="card"><h2>News & sentiment</h2><div id="news" class="muted">–</div></section>
+
+  <section class="card">
+    <details id="settingsBox"><summary>Settings</summary>
+      <p class="muted">Changes apply within seconds. Risk settings are clamped to safe ranges by the server.</p>
+      <form id="cfgForm" onsubmit="saveConfig(event)"></form>
+    </details>
+  </section>
+
+  <section class="card"><details><summary>Log</summary><pre id="log"></pre></details></section>
+
+  <section class="card" id="paperBox" hidden>
+    <h2>Paper account</h2>
+    <button onclick="cmd('reset_paper', null, 'Wipe paper trades and restart from paper_start_equity?')">Reset paper account</button>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const usd = (v, sign) => v == null ? "–" : (sign && v > 0 ? "+" : v < 0 ? "−" : "") + "$" + Math.abs(v).toFixed(2);
+const px = v => v == null ? "–" : Number(v).toPrecision(6).replace(/\.?0+$/, "");
+const ago = t => { const s = Math.round(Date.now() / 1000 - t); return s < 60 ? s + "s ago" : s < 3600 ? Math.round(s / 60) + "m ago" : Math.round(s / 3600) + "h ago"; };
+const cls = v => v > 0 ? "up" : v < 0 ? "down" : "";
+let S = {}, CFG = null;
+
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", 3000); }
+
+async function api(path, body) {
+  const r = await fetch(location.origin + path, body ? { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) } : {});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.status);
+  return j;
+}
+
+async function cmd(name, coin, confirmMsg) {
+  if (confirmMsg && !confirm(confirmMsg)) return;
+  try { await api("/api/cmd", { cmd: name, coin }); toast("Sent: " + name.replace("_", " ")); setTimeout(refresh, 1500); }
+  catch (e) { toast("Failed: " + e.message); }
+}
+function togglePause() { S.paused ? cmd("resume", null, S.paused.startsWith("kill") ? "Resume after kill switch? Peak resets to current equity." : null) : cmd("pause"); }
+
+function spark(hist) {
+  const svg = $("spark");
+  if (!hist || hist.length < 2) { svg.innerHTML = ""; return; }
+  const ys = hist.map(h => h[1]), lo = Math.min(...ys), hi = Math.max(...ys), span = hi - lo || 1;
+  const pts = ys.map((y, i) => `${(i / (ys.length - 1) * 300).toFixed(1)},${(66 - (y - lo) / span * 62).toFixed(1)}`).join(" ");
+  const col = ys[ys.length - 1] >= ys[0] ? "var(--green)" : "var(--red)";
+  svg.innerHTML = `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+}
+
+function render() {
+  const stale = !S.t || Date.now() / 1000 - S.t > 180;
+  $("dot").className = "dot" + (stale ? " stale" : "");
+  $("updated").textContent = S.t ? "updated " + ago(S.t) : "no data yet";
+  $("mode").textContent = S.mode || "–"; $("mode").className = "pill " + (S.mode || "");
+  $("interval").textContent = S.interval || "–";
+  $("paperBox").hidden = S.mode !== "paper";
+
+  let b = "";
+  if (S.error) b += `<div class="banner err">Error: ${esc(S.error)}</div>`;
+  if (S.paused) b += `<div class="banner">⏸ ${esc(S.paused)}</div>`;
+  if (S.day_halt) b += `<div class="banner">Daily loss limit hit: no new entries until tomorrow (UTC).</div>`;
+  if (S.news_risk >= 0.7) b += `<div class="banner err">News risk event (p=${S.news_risk.toFixed(2)}): no new entries.</div>`;
+  $("banners").innerHTML = b;
+
+  $("equity").textContent = usd(S.equity);
+  const day = S.equity - S.day_start;
+  $("dayPnl").innerHTML = S.day_start ? `Today <span class="${cls(day)}">${usd(day, 1)} (${(day / S.day_start * 100).toFixed(2)}%)</span>` : "";
+  $("peak").textContent = S.peak ? "Peak " + usd(S.peak) : "";
+  $("aiSpend").textContent = S.ai ? (S.ai.enabled ? `AI ${S.ai.provider}: ${S.ai.calls} calls, $${S.ai.usd.toFixed(4)}` : "AI off") : "";
+  $("pauseBtn").textContent = S.paused ? "Resume" : "Pause entries";
+  $("pauseBtn").className = S.paused ? "primary" : "";
+  spark(S.equity_hist);
+
+  const P = S.positions || [];
+  $("positions").innerHTML = P.length ? P.map(p => `
+    <div class="item">
+      <div class="row"><b>${esc(p.coin)} <span class="${p.side > 0 ? "up" : "down"}">${p.side > 0 ? "LONG" : "SHORT"}</span></b>
+        <b class="num ${cls(p.upnl)}">${usd(p.upnl, 1)}</b></div>
+      <div class="row muted num"><span>${p.size} @ ${px(p.entry)} → ${px(p.mark)}</span><span>${p.opened ? ago(p.opened) : ""}</span></div>
+      ${p.sl ? `<div class="muted num">stop ${px(p.sl)} · target ${px(p.tp)}</div>` : ""}
+      <div class="btns" style="margin-top:6px"><button class="small danger" onclick="cmd('close','${esc(p.coin)}','Close ${esc(p.coin)} now?')">Close</button></div>
+    </div>`).join("") : "None";
+
+  const D = Object.entries(S.decisions || {});
+  const thr = CFG ? CFG.entry_threshold : 0.4;
+  $("signals").innerHTML = D.length ? D.map(([coin, d]) => {
+    const w = Math.min(Math.abs(d.score), 1) * 50, left = d.score >= 0 ? 50 : 50 - w;
+    const f = Object.entries(d.factors).filter(([, v]) => v != null).map(([k, v]) => `<span class="${cls(v)}">${esc(k)} ${v > 0 ? "+" : ""}${v.toFixed(2)}</span>`).join("");
+    const aiTxt = d.ai ? ` · AI L${(d.ai.long * 100).toFixed(0)}/S${(d.ai.short * 100).toFixed(0)}/F${(d.ai.flat * 100).toFixed(0)}` : "";
+    return `<div class="item">
+      <div class="row"><b>${esc(coin)} <span class="muted num">${px(d.price)}</span></b><b class="num ${cls(d.score)}">${d.score > 0 ? "+" : ""}${d.score.toFixed(2)}</b></div>
+      <div class="bar"><b></b><i style="left:${left}%;width:${w}%;background:${d.score >= 0 ? "var(--green)" : "var(--red)"}"></i></div>
+      <div class="muted">${esc(d.note)} · RSI ${d.rsi}${aiTxt} · entry at ±${thr}</div>
+      <div class="factors">${f}</div></div>`;
+  }).join("") : "Waiting for first bar…";
+
+  const C = S.closed || [];
+  $("closed").innerHTML = C.length ? C.slice(0, 15).map(t => `
+    <div class="item row"><div><b>${esc(t.coin)}</b> <span class="muted">${esc(t.reason)}</span><div class="muted num">${t.entry ? px(t.entry) + " → " : ""}${px(t.exit)} · ${ago(t.at)}</div></div>
+    <b class="num ${cls(t.pnl)}">${usd(t.pnl, 1)}</b></div>`).join("") : "None yet";
+
+  const s = S.news_sentiment;
+  $("news").innerHTML = `<div class="row"><span>Fear & Greed</span><b class="num">${S.fear_greed ?? "–"}</b></div>
+    <div class="row"><span>AI news sentiment</span><b class="num ${cls(s)}">${s == null ? "AI off" : (s > 0 ? "+" : "") + s.toFixed(2)}</b></div>
+    <div class="row"><span>Crash-risk probability</span><b class="num">${S.news_risk == null ? "–" : S.news_risk.toFixed(2)}</b></div>
+    ${(S.headlines || []).map(h => `<div class="item muted">${esc(h)}</div>`).join("")}`;
+
+  const L = $("log"), atBottom = L.scrollTop + L.clientHeight >= L.scrollHeight - 10;
+  L.textContent = (S.log || []).join("\n");
+  if (atBottom) L.scrollTop = L.scrollHeight;
+}
+
+// ---------- settings form, generated from config.json so every key is editable ----------
+const HELP = {
+  mode: "paper = simulated · testnet = fake money on exchange · live = REAL money",
+  coins: "Hyperliquid perps, comma separated", interval: "4h backtested best",
+  entry_threshold: "score needed to open (0–1)", exit_threshold: "opposite score that closes",
+  risk_per_trade_pct: "% of equity lost if stop hits", sl_atr: "stop = ATR ×", tp_atr: "target = ATR ×",
+  max_drawdown_pct: "kill switch: flatten + pause", daily_loss_limit_pct: "pause entries for the day",
+  weight: "how much AI opinion counts (0–1)", flat_veto: "AI 'flat' prob that blocks entries",
+  model: "comma separated = fallbacks in order", paper_start_equity: "used on paper reset",
+};
+const SELECTS = { mode: ["paper", "testnet", "live"], interval: ["15m", "30m", "1h", "4h", "1d"], provider: ["openrouter", "typesafe"] };
+
+function field(key, val, path) {
+  const id = "f_" + path.join("_"), help = HELP[key] ? `<small>${esc(HELP[key])}</small>` : "";
+  if (SELECTS[key]) return `<label><span>${esc(key)}${help}</span><select id="${id}">${SELECTS[key].map(o => `<option ${o === val ? "selected" : ""}>${o}</option>`).join("")}</select></label>`;
+  if (typeof val === "boolean") return `<label><span>${esc(key)}${help}</span><input type="checkbox" id="${id}" ${val ? "checked" : ""}></label>`;
+  if (typeof val === "number") return `<label><span>${esc(key)}${help}</span><input type="number" step="any" inputmode="decimal" id="${id}" value="${val}"></label>`;
+  const text = Array.isArray(val) ? val.join(", ") : val;
+  return `<label class="stack"><span>${esc(key)}${help}</span><input class="wide" id="${id}" value="${esc(text)}" autocapitalize="off" autocorrect="off"></label>`;
+}
+function form(obj, path) {
+  return Object.entries(obj).map(([k, v]) => v && typeof v === "object" && !Array.isArray(v)
+    ? `<fieldset><legend>${esc(k)}</legend>${form(v, path.concat(k))}</fieldset>` : field(k, v, path.concat(k))).join("");
+}
+function read(obj, path) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    const p = path.concat(k), el = $("f_" + p.join("_"));
+    if (v && typeof v === "object" && !Array.isArray(v)) out[k] = read(v, p);
+    else if (typeof v === "boolean") out[k] = el.checked;
+    else if (typeof v === "number") out[k] = Number(el.value);
+    else if (Array.isArray(v) || el.value.includes(",")) out[k] = el.value.split(",").map(x => x.trim()).filter(Boolean);
+    else out[k] = el.value.trim();
+  }
+  if (Array.isArray(out.coins)) out.coins = out.coins.map(c => (S.valid_coins || []).find(v => v.toLowerCase() === c.toLowerCase()) || c);
+  return out;
+}
+async function loadConfig() {
+  CFG = await api("/api/config");
+  $("cfgForm").innerHTML = form(CFG, []) + `<div class="sticky btns"><button class="primary" type="submit">Save settings</button>
+    <button type="button" onclick="loadConfig()">Revert</button></div>`;
+}
+async function saveConfig(e) {
+  e.preventDefault();
+  const next = read(CFG, []), body = { config: next };
+  if (next.mode === "live" && CFG.mode !== "live") {
+    body.confirm = prompt("This trades REAL money with the keys in .env. Type LIVE to confirm.");
+    if (body.confirm !== "LIVE") return toast("Cancelled");
+  }
+  try { await api("/api/config", body); CFG = next; toast("Saved ✓"); setTimeout(refresh, 2000); }
+  catch (err) { toast("Not saved: " + err.message); }
+}
+
+async function refresh() {
+  try { S = await api("/api/status"); render(); }
+  catch (e) { $("updated").textContent = "offline: " + e.message; $("dot").className = "dot stale"; }
+}
+loadConfig().catch(e => toast("Config: " + e.message));
+refresh();
+setInterval(() => { if (!document.hidden) refresh(); }, 10000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+# Lives on the VPS at /home/ubuntu/docker/apps/trading-bot/ (same pattern as growix).
+# CI builds ghcr.io/idk-mr4tyunjay/trading-bot:latest and runs `docker compose pull && up -d` here.
+services:
+  trading-bot:
+    image: ghcr.io/idk-mr4tyunjay/trading-bot:latest
+    container_name: trading-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      UI_HOST: 0.0.0.0
+    ports:
+      - "127.0.0.1:8090:8090"   # localhost only: reach it via Cloudflare Tunnel, never a public port
+    volumes:
+      - ./config.json:/app/config.json   # writable: the UI saves settings here. Must exist BEFORE first `up`.
+      - ./state:/app/state
+      - ./logs:/app/logs
+    logging:
+      options: {max-size: "10m", max-file: "3"}

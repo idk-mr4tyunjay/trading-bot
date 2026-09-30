@@ -1,0 +1,39 @@
+{
+  "mode": "paper",
+  "coins": ["BTC", "ETH", "SOL"],
+  "interval": "4h",
+  "lookback_bars": 300,
+  "poll_seconds": 60,
+  "paper_start_equity": 100,
+
+  "indicators": {"ema_fast": 20, "ema_slow": 50, "rsi_len": 14, "atr_len": 14, "mom_len": 12},
+  "weights": {"trend": 1.0, "momentum": 0.6, "mean_reversion": 0.2, "funding": 0.3, "orderbook": 0.1, "fear_greed": 0.2, "news": 0.3},
+  "entry_threshold": 0.4,
+  "exit_threshold": 0.2,
+  "allow_short": true,
+
+  "risk": {
+    "risk_per_trade_pct": 1.0,
+    "sl_atr": 2.0,
+    "tp_atr": 4.0,
+    "max_leverage": 3,
+    "max_position_usd": 300,
+    "max_open_positions": 2,
+    "daily_loss_limit_pct": 5,
+    "max_drawdown_pct": 25,
+    "min_atr_pct": 0.3,
+    "fee_multiple": 3,
+    "max_hold_hours": 240
+  },
+  "fees": {"taker_pct": 0.045, "slippage_pct": 0.02},
+
+  "ai": {"enabled": false, "provider": "openrouter", "model": ["google/gemma-4-26b-a4b-it:free", "qwen/qwen3.8-27b:free"],
+         "weight": 0.4, "flat_veto": 0.6, "min_confidence": 0.0, "timeout_s": 45},
+  "news": {
+    "enabled": true,
+    "feeds": ["https://cointelegraph.com/rss", "https://www.coindesk.com/arc/outboundfeeds/rss", "https://decrypt.co/feed"],
+    "refresh_minutes": 60,
+    "risk_event_threshold": 0.7,
+    "flatten_on_risk_event": false
+  }
+}
