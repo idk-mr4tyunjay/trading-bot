@@ -159,7 +159,7 @@ def news_view(titles, cfg):
     return s.get("bullish", 0) - s.get("bearish", 0), a["risk_event"]["noul"]
 
 
-if __name__ == "__main__":  # python ai.py  -> one live news + BTC call with your key
+if __name__ == "__main__":  # python src/ai.py  -> one live news + BTC call with your key
     import sys
     import data
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

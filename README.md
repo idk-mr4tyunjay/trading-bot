@@ -35,7 +35,7 @@ LLM is asked to return the same probabilities as JSON, and the answer is validat
 (seconds rather than 100 ms, which doesn't matter on 4h bars) and less calibrated than Jev. The defaults are two free
 models with automatic fallback. OpenRouter free models allow about 50 requests/day without purchased credits, and the
 defaults use about 40/day (3 coins × 6 bars, plus news hourly). A paid fast model such as
-`deepseek/deepseek-v4-flash-0731` costs well under $0.01/day. Test your key with `.venv/bin/python ai.py`.
+`deepseek/deepseek-v4-flash-0731` costs well under $0.01/day. Test your key with `.venv/bin/python src/ai.py`.
 A/B it: run `config.json` and a copy with AI enabled side by side in paper mode, then compare `logs/*.decisions.jsonl`.
 
 ### Arbitrage: realistic or not?
@@ -43,7 +43,7 @@ A/B it: run `config.json` and a copy with AI enabled side by side in paper mode,
 | Type | For a small account? |
 |---|---|
 | Cross-exchange price arb | **No.** You pay 0.05–0.1% taker fees on both legs, plus withdrawal and bridge fees and transfer delays, and pros close gaps in milliseconds. |
-| Funding carry (long spot + short perp on HL) | **Real but tiny.** Typical funding is 11–35% APR on alts. Entry and exit cost ~0.23% across 4 legs, so break-even takes 2–8 days, and funding flips negative in sell-offs. $100 at 15% APR is about $0.04/day. `python bot.py scan` shows live numbers. It's scan-only on purpose. |
+| Funding carry (long spot + short perp on HL) | **Real but tiny.** Typical funding is 11–35% APR on alts. Entry and exit cost ~0.23% across 4 legs, so break-even takes 2–8 days, and funding flips negative in sell-offs. $100 at 15% APR is about $0.04/day. `python src/bot.py scan` shows live numbers. It's scan-only on purpose. |
 | Directional (this bot) | Possible edge on **slow timeframes only**. See the backtest below. |
 
 ### Backtest (real Hyperliquid candles, fees and slippage included, $100, 1% risk per trade)
@@ -123,16 +123,16 @@ every 60 s:  prices → paper stops → equity → kill switch / daily limit
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ```
 ```bash
-.venv/bin/python test_strategy.py
+.venv/bin/python tests/test_strategy.py
 ```
 ```bash
-.venv/bin/python backtest.py --coin ETH --interval 4h
+.venv/bin/python src/backtest.py --coin ETH --interval 4h
 ```
 ```bash
-.venv/bin/python bot.py run
+.venv/bin/python src/bot.py run
 ```
 ```bash
-.venv/bin/python bot.py scan
+.venv/bin/python src/bot.py scan
 ```
 
 Output goes to `logs/<config>.log` (human-readable) and `logs/<config>.decisions.jsonl` (every factor for every

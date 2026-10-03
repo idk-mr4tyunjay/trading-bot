@@ -1,5 +1,5 @@
 """Backtest the technical part of the strategy on real Hyperliquid candles, fees included.
-    python backtest.py --coin BTC [--interval 1h] [--config config.json]
+    python src/backtest.py --coin BTC [--interval 1h] [--config config.json]
 Funding/orderbook/news/Jev have no history here, so only trend/momentum/mean_reversion weights count."""
 from __future__ import annotations
 

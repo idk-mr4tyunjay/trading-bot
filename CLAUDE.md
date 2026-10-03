@@ -1,0 +1,70 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this repo is
+
+A Hyperliquid perps trading bot with an optional AI signal blend and a password-protected
+phone dashboard. **It trades real money in `live` mode** — treat strategy, sizing, and risk
+code as safety-critical.
+
+Deployed to the Oracle Cloud ARM64 homelab (see the separate `vps-docs` repo) as a Docker
+container behind Cloudflare Tunnel. The dashboard listens on `127.0.0.1:8090` only.
+
+## Layout
+
+```
+src/                 application code (run from the repo root)
+  bot.py             entrypoint: `run` (trade loop) and `scan` (funding-carry scanner, read-only)
+  strategy.py        indicators, factor combine, position sizing — pure, no network
+  backtest.py        backtester over real candles; also imported by the tests
+  broker.py          PaperBroker (simulated) and HyperliquidBroker (testnet/live)
+  data.py            Hyperliquid market data
+  ai.py              optional AI signal (OpenRouter / TypeSafe Jev)
+  ui.py, ui.html     dashboard server + page (ui.py loads ui.html from its own dir)
+tests/
+  test_strategy.py   offline checks of strategy math + backtester — the CI gate
+config.json          bot settings; the dashboard writes to it at runtime
+.env.example         template for secrets (.env is gitignored)
+Dockerfile, docker-compose.yml, .github/workflows/deploy.yml
+```
+
+Runtime paths (`config.json`, `.env`, `state/`, `logs/`) are **relative to the working
+directory**, so always run commands from the repo root (the container's WORKDIR is `/app`).
+
+## Commands
+
+```bash
+pip install -r requirements.txt
+python tests/test_strategy.py               # must pass before pushing
+python src/backtest.py --coin ETH --interval 4h
+python src/bot.py run                       # mode comes from config.json
+python src/bot.py scan
+python src/ai.py                            # one live AI call to test your key
+```
+
+## Modes (`config.json` → `mode`)
+
+- `paper` — simulated fills via `PaperBroker`, state in `state/<name>.paper.json`. No keys needed.
+- `testnet` — Hyperliquid testnet; needs `HL_ACCOUNT_ADDRESS` + `HL_AGENT_PRIVATE_KEY`.
+- `live` — real money. The dashboard requires typing `LIVE` to switch.
+
+## Deployment
+
+Push to `main` → `deploy.yml`: run tests → build `linux/arm64` image → push to
+`ghcr.io/idk-mr4tyunjay/trading-bot` → SSH to the VPS as `deploy`.
+
+On the VPS (`/home/ubuntu/docker/apps/trading-bot/`):
+- `docker-compose.yml` is overwritten from the repo on every deploy (staged via `.deploy/`).
+- `.env` and `config.json` are seeded from the repo **only if missing** — after that they are
+  owned by the VPS (real keys, dashboard-saved settings) and CI never touches them.
+- `state/` and `logs/` are bind-mounted and persist across deploys.
+- The dashboard only starts when `UI_PASSWORD` is set in the VPS `.env`.
+
+## Conventions
+
+- Never commit `.env` or put secret values in code, logs, or docs. Keep `.env.example` in
+  sync when adding a new env var.
+- Changes to `strategy.py` / `backtest.py` / sizing need a matching assertion in
+  `tests/test_strategy.py`.
+- The VPS is ARM64 — any new dependency must have an `aarch64` wheel or build cleanly.

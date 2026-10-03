@@ -1,11 +1,15 @@
-"""python test_strategy.py  -- offline checks of the strategy math and the backtester."""
+"""python tests/test_strategy.py  -- offline checks of the strategy math and the backtester."""
 import json
 import math
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import strategy
 from backtest import backtest
 
-cfg = json.load(open("config.json"))
+cfg = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'config.json')))
 
 # indicators
 assert strategy.rsi([float(i) for i in range(30)]) == 100.0

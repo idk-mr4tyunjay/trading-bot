@@ -2,6 +2,7 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY *.py ui.html config.json ./
+COPY src/ ./src/
+COPY config.json ./
 ENV PYTHONUNBUFFERED=1
-CMD ["python", "bot.py", "run"]
+CMD ["python", "src/bot.py", "run"]

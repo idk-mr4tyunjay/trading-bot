@@ -1,6 +1,6 @@
 """Hyperliquid trading bot.
-    python bot.py run   [--config config.json]   trade (paper/testnet/live per config "mode")
-    python bot.py scan  [--config config.json]   funding-rate carry scanner (read-only)
+    python src/bot.py run   [--config config.json]   trade (paper/testnet/live per config "mode")
+    python src/bot.py scan  [--config config.json]   funding-rate carry scanner (read-only)
 """
 from __future__ import annotations
 
