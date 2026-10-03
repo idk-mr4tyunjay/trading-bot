@@ -15,5 +15,13 @@ services:
       - ./config.json:/app/config.json   # writable: the UI saves settings here. Must exist BEFORE first `up`.
       - ./state:/app/state
       - ./logs:/app/logs
+    labels:   # Homepage auto-discovery (needs ~/docker/homepage/docker.yaml on the VPS)
+      homepage.group: Apps
+      homepage.name: Trading Bot
+      homepage.icon: mdi-chart-line
+      homepage.href: https://trading.devtown.lol
+      homepage.description: Hyperliquid bot
+      homepage.server: my-docker
+      homepage.container: trading-bot
     logging:
       options: {max-size: "10m", max-file: "3"}
