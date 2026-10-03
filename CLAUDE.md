@@ -67,6 +67,9 @@ On the VPS (`/home/ubuntu/docker/apps/trading-bot/`):
 
 ## Conventions
 
+- **Never `git push` (or anything that triggers a deploy) until the user explicitly says to.**
+  Pushing to `main` deploys straight to the VPS. Committing locally is fine; pushing is not.
+
 - Never commit `.env` or put secret values in code, logs, or docs. Keep `.env.example` in
   sync when adding a new env var.
 - Changes to `strategy.py` / `backtest.py` / sizing need a matching assertion in
