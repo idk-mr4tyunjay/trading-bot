@@ -58,8 +58,7 @@ def run(cfg, name, cfg_path):
     st = load_json("state/%s.risk.json" % name, {"day": "", "day_start": 0, "peak": 0, "last_bar": {}})
     st.setdefault("paused", None)
     st.setdefault("equity_hist", [])
-    if os.environ.get("UI_PASSWORD"):
-        ui.start(cfg_path, os.environ["UI_PASSWORD"], os.environ.get("UI_HOST", "127.0.0.1"), int(os.environ.get("UI_PORT", "8090")))
+    ui.start(cfg_path, os.environ.get("UI_HOST", "127.0.0.1"), int(os.environ.get("UI_PORT", "8090")))
     last, mids, eq, err = {}, {}, 0.0, None
     decisions = open("logs/%s.decisions.jsonl" % name, "a")
     market.refresh()

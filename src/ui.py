@@ -1,9 +1,7 @@
-"""Phone dashboard + remote control. Stdlib only; starts only when UI_PASSWORD is set (HTTP Basic auth).
+"""Phone dashboard + remote control. Stdlib only. No auth of its own: it is gated by Cloudflare Access / WireGuard.
 The bot loop fills `snapshot` each iteration and drains `commands`; this thread never touches the broker."""
 from __future__ import annotations
 
-import base64
-import hmac
 import json
 import logging
 import os
@@ -57,7 +55,7 @@ def validate(new, old, valid_coins):
     return None
 
 
-def start(cfg_path, password, host, port):
+def start(cfg_path, host, port):
     page = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui.html")
 
     class H(BaseHTTPRequestHandler):
@@ -73,26 +71,11 @@ def start(cfg_path, password, host, port):
             self.end_headers()
             self.wfile.write(b)
 
-        def _authed(self):
-            h = self.headers.get("Authorization", "")
-            try:
-                pw = base64.b64decode(h[6:]).decode().partition(":")[2] if h.startswith("Basic ") else ""
-            except Exception:
-                pw = ""
-            if hmac.compare_digest(pw.encode(), password.encode()):
-                return True
-            self.send_response(401)
-            self.send_header("WWW-Authenticate", 'Basic realm="trading-bot"')
-            self.end_headers()
-            return False
-
         def _body(self):
             n = int(self.headers.get("Content-Length") or 0)
             return json.loads(self.rfile.read(min(n, 200_000)) or b"{}")
 
         def do_GET(self):
-            if not self._authed():
-                return
             if self.path == "/":
                 with open(page, "rb") as f:
                     self._send(200, f.read(), "text/html; charset=utf-8")
@@ -105,8 +88,9 @@ def start(cfg_path, password, host, port):
                 self._send(404, {"error": "not found"})
 
         def do_POST(self):
-            if not self._authed():
-                return
+            # JSON content type forces a CORS preflight, so other sites can't drive the bot from your browser.
+            if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
+                return self._send(415, {"error": "content-type must be application/json"})
             try:
                 body = self._body()
             except ValueError:

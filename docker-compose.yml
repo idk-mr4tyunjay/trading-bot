@@ -9,7 +9,8 @@ services:
     environment:
       UI_HOST: 0.0.0.0
     ports:
-      - "127.0.0.1:8090:8090"   # localhost only: reach it via Cloudflare Tunnel, never a public port
+      - "127.0.0.1:8090:8090"   # Cloudflare Tunnel -> trading.devtown.lol (gated by Cloudflare Access)
+      - "10.10.0.1:8090:8090"   # WireGuard only. Never 0.0.0.0: Docker bypasses UFW and the app has no login.
     volumes:
       - ./config.json:/app/config.json   # writable: the UI saves settings here. Must exist BEFORE first `up`.
       - ./state:/app/state

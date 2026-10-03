@@ -188,7 +188,7 @@ builds an **arm64** image, pushes it to `ghcr.io/idk-mr4tyunjay/trading-bot`, th
    ```bash
    cd ~/docker/apps/trading-bot && mv .env.example .env && chmod 600 .env && nano .env
    ```
-   Fill in `OPENROUTER_API_KEY` and `UI_PASSWORD`, and leave the Hyperliquid keys empty for paper mode. Then give the `deploy`
+   Fill in `OPENROUTER_API_KEY`, and leave the Hyperliquid keys empty for paper mode. Then give the `deploy`
    user the same access it has to growix's folder: `sudo chown -R deploy:deploy ~/docker/apps/trading-bot`, or whatever owner growix's folder uses.
 5. Push to `main` and watch the Actions tab. After that, every push deploys itself.
 
@@ -201,13 +201,23 @@ builds an **arm64** image, pushes it to `ghcr.io/idk-mr4tyunjay/trading-bot`, th
 
 ### Phone dashboard
 
-Set `UI_PASSWORD` in `.env`. The dashboard listens on `127.0.0.1:8090` on the VPS, so it's never a public port.
-Expose it through your existing tunnel:
+Same setup as the other homelab apps: the app has **no login of its own**. It's reachable only through
+Cloudflare Access or over WireGuard.
 
-1. Add `- hostname: bot.<your-domain>` / `service: http://localhost:8090` to `/etc/cloudflared/config.yml`, above the 404 catch-all.
-2. Run `cloudflared tunnel route dns oracle bot.<your-domain>`, then `sudo systemctl restart cloudflared`.
-3. **Put `bot.<your-domain>` behind Cloudflare Access**, like your other subdomains. That gives two locks: Access, then the password.
-4. On your phone, open it and use Share → Add to Home Screen.
+- **Off VPN:** https://trading.devtown.lol, through the `oracle` tunnel and gated by Cloudflare Access.
+- **On VPN:** http://10.10.0.1:8090, with no login (`wg0` only, like Homepage and Dozzle).
+
+The container publishes 8090 on `127.0.0.1` (for the tunnel) and `10.10.0.1` (for WireGuard) only. **Never** publish it on
+`0.0.0.0`: Docker bypasses UFW, and anyone who reaches the port can switch the bot to live.
+
+One-time VPS setup:
+1. Add `- hostname: trading.devtown.lol` / `service: http://localhost:8090` to `/etc/cloudflared/config.yml`, above the 404 catch-all.
+2. Run `cloudflared tunnel route dns oracle trading.devtown.lol`, then `sudo systemctl restart cloudflared`.
+3. In Cloudflare Zero Trust, add an Access application for `trading.devtown.lol` with the same policy as the other subdomains.
+   **Do this before step 2 goes live.**
+4. Make Docker start after WireGuard, or the `10.10.0.1` bind fails at boot:
+   `sudo systemctl edit docker` → `[Unit]` / `After=wg-quick@wg0.service` / `Wants=wg-quick@wg0.service`.
+5. Add a tile to Homepage's `services.yaml`, then use Share → Add to Home Screen on your phone.
 
 From the dashboard you can:
 - see equity, the chart, open positions with live P&L, every coin's score and why it did or didn't trade, recent trades, news and risk, and the log

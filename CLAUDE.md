@@ -4,12 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A Hyperliquid perps trading bot with an optional AI signal blend and a password-protected
-phone dashboard. **It trades real money in `live` mode** — treat strategy, sizing, and risk
+A Hyperliquid perps trading bot with an optional AI signal blend and a phone dashboard. **It trades real money in `live` mode** — treat strategy, sizing, and risk
 code as safety-critical.
 
 Deployed to the Oracle Cloud ARM64 homelab (see the separate `vps-docs` repo) as a Docker
-container behind Cloudflare Tunnel. The dashboard listens on `127.0.0.1:8090` only.
+container. The dashboard has **no auth of its own**, matching the other homelab apps:
+- https://trading.devtown.lol: `oracle` tunnel → `127.0.0.1:8090`, gated by Cloudflare Access
+- http://10.10.0.1:8090: WireGuard only
+
+Never publish 8090 on `0.0.0.0` (Docker bypasses UFW). Dashboard POSTs must be
+`Content-Type: application/json`; that's the CSRF guard, so keep it.
 
 ## Layout
 
@@ -59,7 +63,7 @@ On the VPS (`/home/ubuntu/docker/apps/trading-bot/`):
 - `.env` and `config.json` are seeded from the repo **only if missing** — after that they are
   owned by the VPS (real keys, dashboard-saved settings) and CI never touches them.
 - `state/` and `logs/` are bind-mounted and persist across deploys.
-- The dashboard only starts when `UI_PASSWORD` is set in the VPS `.env`.
+- The `10.10.0.1` port bind needs `wg0` up first, so Docker is ordered `After=wg-quick@wg0`.
 
 ## Conventions
 
