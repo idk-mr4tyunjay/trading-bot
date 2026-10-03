@@ -213,8 +213,8 @@ The container publishes 8090 on `127.0.0.1` (for the tunnel) and `10.10.0.1` (fo
 One-time VPS setup:
 1. Add `- hostname: trading.devtown.lol` / `service: http://localhost:8090` to `/etc/cloudflared/config.yml`, above the 404 catch-all.
 2. Run `cloudflared tunnel route dns oracle trading.devtown.lol`, then `sudo systemctl restart cloudflared`.
-3. In Cloudflare Zero Trust, add an Access application for `trading.devtown.lol` with the same policy as the other subdomains.
-   **Do this before step 2 goes live.**
+3. Nothing to do in the Cloudflare dashboard: the existing `*.devtown.lol` Access gate covers the new subdomain.
+   Confirm it by opening the URL in a private window. You should get the Access login, not the dashboard.
 4. Make Docker start after WireGuard, or the `10.10.0.1` bind fails at boot:
    `sudo systemctl edit docker` → `[Unit]` / `After=wg-quick@wg0.service` / `Wants=wg-quick@wg0.service`.
 5. Add a tile to Homepage's `services.yaml`, then use Share → Add to Home Screen on your phone.
