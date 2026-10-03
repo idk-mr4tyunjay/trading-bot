@@ -3,119 +3,138 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b0d12">
+<meta name="theme-color" content="#f4f4f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Trading Bot">
 <title>Trading Bot</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%238b7cff'/%3E%3Cstop offset='1' stop-color='%234f46e5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Cpath d='M7 21.5l5.5-5.5 4 4L25 11.5' fill='none' stroke='white' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='25' cy='11.5' r='2.4' fill='white'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preload" as="font" type="font/woff2" crossorigin href="https://cdn.jsdelivr.net/npm/geist@1.7.2/dist/fonts/geist-sans/Geist-Variable.woff2">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 <style>
+  /* Geist + Geist Mono (OFL), loaded with @font-face instead of a Google Fonts <link>. */
+  @font-face { font-family: "Geist"; src: url("https://cdn.jsdelivr.net/npm/geist@1.7.2/dist/fonts/geist-sans/Geist-Variable.woff2") format("woff2");
+               font-weight: 100 900; font-style: normal; font-display: swap; }
+  @font-face { font-family: "Geist Mono"; src: url("https://cdn.jsdelivr.net/npm/geist@1.7.2/dist/fonts/geist-mono/GeistMono-Variable.woff2") format("woff2");
+               font-weight: 100 900; font-style: normal; font-display: swap; }
+
+  /* Tokens. Neutrals are one cool zinc family; the single accent is the logo's violet, kept flat (no gradients in the UI).
+     Shape rule, used everywhere: surfaces (panels, alerts, dialog, toast, save bar) --r-surface; anything inside a surface
+     (buttons, inputs, tiles, tooltips) --r-control; a control nested in a control --r-inner; tags, pills, tracks, dots --r-pill. */
   :root {
     color-scheme: light;
-    --bg: #f4f5f8; --panel: #ffffff; --panel2: #f8f9fb; --hover: #f1f3f7; --text: #0e1117; --text2: #485062; --muted: #7b8396;
-    --line: #e6e8ee; --line2: #eef0f4; --grid: #f0f1f5; --track: #eceef3;
-    --up: #0b9f6a; --up-bg: #e5f6ef; --down: #e0344a; --down-bg: #fde9ec; --warn: #c27803; --warn-bg: #fff4dd;
-    --accent: #5b4ff0; --accent-bg: #eeecff; --on-accent: #ffffff;
-    --shadow: 0 1px 2px rgba(15, 20, 35, .04), 0 2px 8px rgba(15, 20, 35, .04);
-    --radius: 14px;
+    --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --r-surface: 12px; --r-control: 8px; --r-inner: 6px; --r-pill: 999px;
+    --ease: cubic-bezier(.16, 1, .3, 1);
+    --bg: #f4f4f5; --panel: #fcfcfd; --panel2: #f6f6f7; --hover: #efeff1; --text: #18181b; --text2: #52525b; --muted: #6b6b75;
+    --line: #e4e4e7; --line2: #ececee; --grid: #efeff1; --track: #e7e7ea;
+    --up: #067a52; --up-bg: #e3f3eb; --down: #c42a3d; --down-bg: #fbe9eb; --warn: #9a5a00; --warn-bg: #fcf0da;
+    --accent: #5545c8; --accent-bg: #efedfb; --on-accent: #fcfcfd; --on-down: #fcfcfd;
+    --shadow: 0 1px 2px rgb(24 24 27 / .04);
+    --pop: 0 12px 32px rgb(24 24 27 / .16);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --bg: #0b0d12; --panel: #12151c; --panel2: #171b23; --hover: #1a1e27; --text: #edf0f5; --text2: #b3bac8; --muted: #7d8597;
-      --line: #20252f; --line2: #1b1f28; --grid: #181c24; --track: #222733;
-      --up: #22c58b; --up-bg: #0f2a20; --down: #f6465d; --down-bg: #2d1218; --warn: #f0b90b; --warn-bg: #2a220b;
-      --accent: #8b7cff; --accent-bg: #1f1b3d; --on-accent: #0b0d12;
+      --bg: #09090b; --panel: #111114; --panel2: #18181c; --hover: #1c1c21; --text: #f2f2f4; --text2: #b4b4bd; --muted: #8a8a95;
+      --line: #26262b; --line2: #1f1f24; --grid: #18181c; --track: #26262c;
+      --up: #3cc68d; --up-bg: #0f2a20; --down: #ea6470; --down-bg: #2e1519; --warn: #e0a52a; --warn-bg: #2a210d;
+      --accent: #9a8ef0; --accent-bg: #1e1b36; --on-accent: #0c0b14; --on-down: #0c0b14;
       --shadow: none;
+      --pop: 0 12px 32px rgb(0 0 0 / .5);
     }
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #0b0d12; --panel: #12151c; --panel2: #171b23; --hover: #1a1e27; --text: #edf0f5; --text2: #b3bac8; --muted: #7d8597;
-    --line: #20252f; --line2: #1b1f28; --grid: #181c24; --track: #222733;
-    --up: #22c58b; --up-bg: #0f2a20; --down: #f6465d; --down-bg: #2d1218; --warn: #f0b90b; --warn-bg: #2a220b;
-    --accent: #8b7cff; --accent-bg: #1f1b3d; --on-accent: #0b0d12;
+    --bg: #09090b; --panel: #111114; --panel2: #18181c; --hover: #1c1c21; --text: #f2f2f4; --text2: #b4b4bd; --muted: #8a8a95;
+    --line: #26262b; --line2: #1f1f24; --grid: #18181c; --track: #26262c;
+    --up: #3cc68d; --up-bg: #0f2a20; --down: #ea6470; --down-bg: #2e1519; --warn: #e0a52a; --warn-bg: #2a210d;
+    --accent: #9a8ef0; --accent-bg: #1e1b36; --on-accent: #0c0b14; --on-down: #0c0b14;
     --shadow: none;
+    --pop: 0 12px 32px rgb(0 0 0 / .5);
   }
 
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-         font-feature-settings: "cv11", "ss01"; -webkit-font-smoothing: antialiased; }
-  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum", "cv11"; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  /* data is Geist with tabular digits so columns line up; Geist Mono is only for small labels (badges, tags, counts, ranges), chart axes and the log */
+  .num { font-variant-numeric: tabular-nums; }
   .up { color: var(--up); } .down { color: var(--down); } .muted { color: var(--muted); } .t2 { color: var(--text2); }
   [hidden] { display: none !important; }
-  svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
-  code { font-size: 12.5px; background: var(--panel2); padding: 1px 5px; border-radius: 5px; }
+  .i { font-size: 18px; line-height: 1; flex: none; }  /* Phosphor icons, regular weight only */
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-inner); }
+  code { font: 12.5px var(--mono); background: var(--panel2); padding: 1px 5px; border-radius: var(--r-inner); }
+  button, .tk, .nav button, .seg button { transition: background-color .2s var(--ease), color .2s var(--ease), border-color .2s var(--ease), transform .12s var(--ease); }
+  .btn:active:not(:disabled), .seg button:active, .nav button:active, .bnav button:active, .tk:active, .theme button:active { transform: translateY(1px); }
 
   /* ================= shell ================= */
-  .app { display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
-  .side { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 4px; padding: 18px 14px;
+  .app { display: grid; grid-template-columns: 232px 1fr; min-height: 100dvh; }
+  .side { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: 4px; padding: 18px 12px;
           border-right: 1px solid var(--line); background: var(--panel); }
-  .logo { display: flex; align-items: center; gap: 10px; padding: 2px 8px 18px; }
-  .logo svg { width: 34px; height: 34px; flex: none; }
-  .logo b { display: block; font-size: 15.5px; font-weight: 750; letter-spacing: -.02em; }
-  .logo small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 500; }
+  .logo { display: flex; align-items: center; gap: 10px; padding: 2px 8px 20px; }
+  .logo svg { width: 30px; height: 30px; flex: none; }
+  .logo b { display: block; font-size: 15px; font-weight: 650; letter-spacing: -.02em; }
+  .logo small { display: block; font-size: 12px; color: var(--muted); }
   .nav { display: grid; gap: 2px; }
-  .nav button { display: flex; align-items: center; gap: 11px; width: 100%; border: 0; background: none; color: var(--text2); cursor: pointer;
-                font: inherit; font-weight: 550; font-size: 14px; padding: 9px 10px; border-radius: 10px; text-align: left; }
+  .nav button { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; color: var(--text2); cursor: pointer;
+                font: inherit; font-weight: 500; font-size: 14px; padding: 8px 10px; border-radius: var(--r-control); text-align: left; }
   .nav button:hover { background: var(--hover); color: var(--text); }
-  .nav button[aria-current="page"] { background: var(--accent-bg); color: var(--accent); }
-  .nav .ct { margin-left: auto; font-size: 11px; font-weight: 700; min-width: 20px; text-align: center; padding: 1px 6px; border-radius: 99px;
+  .nav button[aria-current="page"] { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+  .nav .ct { margin-left: auto; font: 600 11px/18px var(--mono); min-width: 20px; text-align: center; padding: 0 6px; border-radius: var(--r-pill);
              background: var(--accent); color: var(--on-accent); }
   .side-foot { margin-top: auto; display: grid; gap: 10px; }
-  .botcard { border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; background: var(--panel2); font-size: 12.5px; }
-  .botcard .r { display: flex; align-items: center; gap: 8px; }
-  .botcard .r b { font-size: 13px; }
-  .botcard .s { color: var(--muted); margin-top: 3px; }
-  .theme { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
-  .theme button { border: 0; background: none; color: var(--muted); border-radius: 7px; padding: 5px 0; cursor: pointer; display: grid; place-items: center; }
-  .theme button[aria-pressed="true"] { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
-  .theme svg.i { width: 15px; height: 15px; }
+  .botcard { border-top: 1px solid var(--line2); padding: 14px 10px 4px; font-size: 12.5px; }
+  .botcard .r { display: flex; align-items: center; gap: 9px; }
+  .botcard .r b { font-size: 13px; font-weight: 600; }
+  .botcard .s { color: var(--muted); margin: 2px 0 0 17px; }
+  .theme { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r-control); padding: 2px; }
+  .theme button { border: 0; background: none; color: var(--muted); border-radius: var(--r-inner); padding: 5px 0; cursor: pointer; display: grid; place-items: center; }
+  .theme button:hover { color: var(--text); }
+  .theme button[aria-pressed="true"] { background: var(--panel); color: var(--text); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+  .theme .i { font-size: 15px; }
 
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--up); flex: none; position: relative; }
-  .dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; background: var(--up); opacity: .25; animation: ping 2s infinite; }
+  /* the one status dot: real state (running / paused / not responding), pulses only while running */
+  .dot { width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--up); flex: none; position: relative; }
+  .dot::after { content: ""; position: absolute; inset: -4px; border-radius: var(--r-pill); background: var(--up); opacity: 0; }
   .dot.paused, .dot.paused::after { background: var(--warn); } .dot.stale, .dot.stale::after { background: var(--down); }
-  .dot.paused::after, .dot.stale::after { animation: none; opacity: .2; }
-  @keyframes ping { 0% { transform: scale(.6); opacity: .45; } 100% { transform: scale(1.6); opacity: 0; } }
-  @media (prefers-reduced-motion: reduce) { .dot::after { animation: none; } }
+  @media (prefers-reduced-motion: no-preference) { .dot:not(.paused):not(.stale)::after { animation: ping 2.4s var(--ease) infinite; } }
+  @keyframes ping { 0% { transform: scale(.6); opacity: .4; } 100% { transform: scale(1.7); opacity: 0; } }
 
   /* "i" buttons: tap or hover for a plain-English explanation (#tipbox) */
-  .tip { position: relative; display: inline-grid; place-items: center; width: 15px; height: 15px; margin-left: 5px; padding: 0; flex: none;
-         border: 1px solid currentColor; border-radius: 50%; background: none; color: var(--muted); opacity: .7; cursor: help;
-         font: italic 700 9.5px/1 Georgia, "Times New Roman", serif; text-transform: none; letter-spacing: 0; vertical-align: 1px; }
+  .tip { position: relative; display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 4px; padding: 0; flex: none;
+         border: 0; border-radius: var(--r-pill); background: none; color: var(--muted); opacity: .8; cursor: help; font-size: 15px; line-height: 1;
+         text-transform: none; letter-spacing: 0; vertical-align: -3px; }
+  .tip .ph { font-size: 15px; }
   .tip::after { content: ""; position: absolute; inset: -9px; }  /* bigger tap target than it looks */
   .tip:hover, .tip[aria-expanded="true"] { opacity: 1; color: var(--accent); }
-  .card-h h2 .tip { margin-left: -2px; }
-  #tipbox { position: fixed; z-index: 40; width: max-content; max-width: min(300px, calc(100vw - 16px)); padding: 10px 12px; border-radius: 10px;
-            background: var(--text); color: var(--bg); font-size: 12.5px; line-height: 1.45; box-shadow: 0 10px 30px rgba(0,0,0,.3); }
-  #tipbox b { display: block; font-size: 13px; margin-bottom: 3px; }
+  .card-h h2 .tip { margin-left: 2px; }
+  #tipbox { position: fixed; z-index: 40; width: max-content; max-width: min(300px, calc(100vw - 16px)); padding: 10px 12px; border-radius: var(--r-control);
+            background: var(--text); color: var(--bg); font-size: 12.5px; line-height: 1.45; box-shadow: var(--pop); }
+  #tipbox b { display: block; font-size: 13px; font-weight: 600; margin-bottom: 3px; }
 
   .main { min-width: 0; }
-  .topbar { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 14px; padding: 12px 28px;
-            background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(14px) saturate(1.5); -webkit-backdrop-filter: blur(14px) saturate(1.5);
+  .topbar { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 14px; padding: 12px 32px; background: var(--bg);
             border-bottom: 1px solid var(--line); padding-top: max(12px, env(safe-area-inset-top)); }
-  .topbar h1 { font-size: 18px; font-weight: 700; letter-spacing: -.02em; margin: 0; white-space: nowrap; }
+  .topbar h1 { font-size: 17px; font-weight: 600; letter-spacing: -.02em; margin: 0; white-space: nowrap; }
   .mlogo { display: none; }
-  .ticker { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-left: 8px; flex: 1; min-width: 0; }
+  .ticker { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-left: 10px; flex: 1; min-width: 0; }
   .ticker::-webkit-scrollbar { display: none; }
-  .tk { display: flex; align-items: center; gap: 7px; padding: 5px 10px 5px 6px; border-radius: 99px; background: var(--panel); border: 1px solid var(--line);
+  .tk { display: flex; align-items: center; gap: 7px; padding: 4px 10px 4px 5px; border-radius: var(--r-pill); background: var(--panel); border: 1px solid var(--line);
         white-space: nowrap; font-size: 12.5px; cursor: pointer; color: var(--text); font-family: inherit; }
-  .tk:hover { border-color: var(--muted); }
-  .tk b { font-weight: 650; } .tk span.num { color: var(--text2); }
+  .tk:hover { border-color: color-mix(in srgb, var(--muted) 60%, var(--line)); }
+  .tk b { font-weight: 600; } .tk span.num { color: var(--text2); font-size: 12px; }
   .tk span.chg.up { color: var(--up); } .tk span.chg.down { color: var(--down); }
-  .top-r { display: flex; align-items: center; gap: 8px; margin-left: auto; flex: none; }
-  .mode { font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; padding: 5px 10px; border-radius: 8px; background: var(--panel2);
+  .top-r { display: flex; align-items: center; gap: 6px; margin-left: auto; flex: none; }
+  .mode { font: 600 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: var(--r-pill); background: var(--panel2);
           border: 1px solid var(--line); color: var(--text2); }
   .mode.paper { background: var(--accent-bg); color: var(--accent); border-color: transparent; }
   .mode.testnet { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
-  .mode.live { background: var(--down); color: #fff; border-color: transparent; }
-  .content { padding: 22px 28px 40px; max-width: 1400px; }
+  .mode.live { background: var(--down); color: var(--on-down); border-color: transparent; }
+  .content { padding: 24px 32px 48px; max-width: 1400px; }
 
   .bnav { display: none; }
   @media (max-width: 900px) {
@@ -127,15 +146,14 @@
     .mlogo svg { width: 28px; height: 28px; }
     .ticker { margin-left: 0; }
     .content { padding: 16px 16px calc(92px + env(safe-area-inset-bottom)); }
-    .bnav { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 8;
-            background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    .bnav { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; background: var(--panel);
             border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
-    .bnav button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 11px; font-weight: 600; display: grid; justify-items: center;
+    .bnav button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 11px; font-weight: 550; display: grid; justify-items: center;
                    gap: 3px; padding: 6px 0; cursor: pointer; position: relative; }
     .bnav button[aria-current="page"] { color: var(--accent); }
-    .bnav svg.i { width: 22px; height: 22px; }
-    .bnav .ct { position: absolute; top: 1px; left: calc(50% + 6px); font-size: 10px; font-weight: 800; min-width: 17px; padding: 0 4px; line-height: 17px;
-                border-radius: 99px; background: var(--accent); color: var(--on-accent); }
+    .bnav .i { font-size: 22px; }
+    .bnav .ct { position: absolute; top: 1px; left: calc(50% + 6px); font: 600 10px/17px var(--mono); min-width: 17px; padding: 0 4px;
+                border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); }
   }
   @media (max-width: 520px) { .tk span.chg { display: none; } }
 
@@ -144,60 +162,85 @@
   .g-main { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
   @media (max-width: 1180px) { .g-main { grid-template-columns: minmax(0, 1fr); } }
   .col { display: grid; gap: 16px; align-content: start; min-width: 0; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); min-width: 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-surface); box-shadow: var(--shadow); min-width: 0; }
   .card-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line2); flex-wrap: wrap; }
-  .card-h h2 { margin: 0; font-size: 14.5px; font-weight: 650; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
-  .card-h h2 svg.i { color: var(--muted); width: 16px; height: 16px; }
+  .card-h h2 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
+  .card-h h2 .i { color: var(--muted); font-size: 16px; }
   .card-h .sub { font-size: 12.5px; color: var(--muted); }
   .card-b { padding: 16px 18px; }
   .card-b.flush { padding: 0; overflow-x: auto; }
   .empty { padding: 34px 20px; text-align: center; color: var(--muted); font-size: 13px; }
-  .empty svg.i { width: 28px; height: 28px; color: var(--muted); opacity: .6; margin-bottom: 8px; }
+  .empty .i { display: block; font-size: 28px; color: var(--muted); opacity: .7; margin-bottom: 8px; }
   .empty b { display: block; color: var(--text); font-size: 14px; font-weight: 600; margin-bottom: 2px; }
 
-  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
-  @media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  .kpi { padding: 16px 18px; }
-  .kpi .l { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); font-weight: 550; }
-  .kpi .l svg.i { width: 15px; height: 15px; }
-  .kpi .v { font-size: 26px; font-weight: 750; letter-spacing: -.03em; margin: 6px 0 4px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .kpi .s { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  @media (max-width: 520px) { .kpis { gap: 10px; } .kpi { padding: 13px 14px; } .kpi .v { font-size: 20px; white-space: normal; } .kpi .s { white-space: normal; } }
-  .delta { display: inline-flex; align-items: center; gap: 3px; font-weight: 650; font-size: 12.5px; padding: 1px 7px; border-radius: 6px; }
+  /* portfolio panel: one big figure, its chart, then a strip of supporting numbers (Overview and Trades) */
+  .pf-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 20px 22px 0; }
+  .pf-l { display: flex; align-items: center; font-size: 13px; font-weight: 500; color: var(--text2); }
+  .pf-v { font-size: 44px; font-weight: 600; letter-spacing: -.045em; line-height: 1.05; margin: 8px 0 10px; white-space: nowrap; }
+  .pf-d { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--muted); }
+  .pf-tools { display: flex; align-items: center; gap: 4px; }
+  .pf .chartbox { height: 280px; margin: 14px 10px 0 6px; }
+  .pf-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line2); margin-top: 10px; }
+  .st { padding: 14px 22px 16px; min-width: 0; }
+  .st + .st { border-left: 1px solid var(--line2); }
+  .st .l { display: flex; align-items: center; font-size: 12.5px; font-weight: 500; color: var(--muted); }
+  .st .v { font-size: 20px; font-weight: 600; letter-spacing: -.025em; line-height: 1.25; margin: 5px 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .st .s { font-size: 12.5px; color: var(--muted); }
+  .nw { white-space: nowrap; }
+  @media (max-width: 640px) {
+    .pf-top { padding: 16px 16px 0; }
+    .pf-v { font-size: 34px; }
+    .pf .chartbox { margin: 10px 4px 0 0; }
+    .pf-stats { grid-template-columns: 1fr; }
+    .st { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center; padding: 12px 16px; }
+    .st + .st { border-left: 0; border-top: 1px solid var(--line2); }
+    .st .l, .st .s { grid-column: 1; }
+    .st .v { grid-column: 2; grid-row: 1 / 3; margin: 0; font-size: 18px; text-align: right; }
+  }
+  .delta { display: inline-flex; align-items: center; gap: 3px; font-weight: 500; font-size: 12.5px; padding: 1px 8px 1px 6px; border-radius: var(--r-pill); }
+  .delta .i { font-size: 13px; }
   .delta.up { background: var(--up-bg); } .delta.down { background: var(--down-bg); }
 
-  .seg { display: inline-flex; background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 2px; gap: 2px; }
-  .seg button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 7px;
-                cursor: pointer; min-height: 28px; }
-  .seg button[aria-pressed="true"] { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  /* loading placeholders shaped like the numbers they stand in for */
+  .sk { display: block; height: 1em; border-radius: var(--r-inner); background: var(--track); }
+  @media (prefers-reduced-motion: no-preference) {
+    .sk { background: linear-gradient(90deg, var(--track) 30%, var(--hover) 50%, var(--track) 70%) 0 0 / 300% 100%; animation: shimmer 1.6s ease-in-out infinite; }
+  }
+  @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -50% 0; } }
 
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; font: inherit; font-weight: 600; font-size: 13.5px;
-         border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; min-height: 38px; background: var(--panel); color: var(--text); cursor: pointer;
+  .seg { display: inline-flex; background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r-control); padding: 2px; gap: 2px; }
+  .seg button { border: 0; background: none; color: var(--muted); font: 500 12px var(--mono); padding: 4px 10px; border-radius: var(--r-inner);
+                cursor: pointer; min-height: 28px; }
+  .seg button:hover { color: var(--text); }
+  .seg button[aria-pressed="true"] { background: var(--panel); color: var(--text); box-shadow: 0 1px 2px rgb(0 0 0 / .1); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; font: inherit; font-weight: 550; font-size: 13.5px;
+         border: 1px solid var(--line); border-radius: var(--r-control); padding: 8px 14px; min-height: 38px; background: var(--panel); color: var(--text); cursor: pointer;
          white-space: nowrap; }
   .btn:hover { background: var(--hover); }
-  .btn svg.i { width: 16px; height: 16px; }
+  .btn .i { font-size: 16px; }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-  .btn.primary:hover { filter: brightness(1.08); }
-  .btn.danger { color: var(--down); border-color: color-mix(in srgb, var(--down) 40%, var(--line)); }
+  .btn.primary:hover { background: color-mix(in srgb, var(--accent) 88%, var(--text)); }
+  .btn.danger { color: var(--down); border-color: color-mix(in srgb, var(--down) 35%, var(--line)); }
   .btn.danger:hover { background: var(--down-bg); }
-  .btn.danger.solid { background: var(--down); border-color: var(--down); color: #fff; }
-  .btn.sm { min-height: 30px; padding: 4px 10px; font-size: 12.5px; border-radius: 8px; }
+  .btn.danger.solid { background: var(--down); border-color: var(--down); color: var(--on-down); }
+  .btn.sm { min-height: 30px; padding: 4px 10px; font-size: 12.5px; }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
 
-  .tag { display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 800; letter-spacing: .05em; padding: 2px 6px; border-radius: 5px; vertical-align: 1px; }
+  .tag { display: inline-flex; align-items: center; font: 600 10px/1 var(--mono); letter-spacing: .05em; padding: 3px 7px; border-radius: var(--r-pill); vertical-align: 2px; }
   .tag.long { background: var(--up-bg); color: var(--up); } .tag.short { background: var(--down-bg); color: var(--down); }
-  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 650; padding: 3px 9px; border-radius: 99px;
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 550; padding: 3px 9px; border-radius: var(--r-pill);
           background: var(--panel2); color: var(--text2); white-space: nowrap; border: 1px solid var(--line); }
   .pill.long { background: var(--up-bg); color: var(--up); border-color: transparent; }
   .pill.short { background: var(--down-bg); color: var(--down); border-color: transparent; }
   .pill.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
 
   .coin { display: flex; align-items: center; gap: 10px; min-width: 0; }
-  .coin .nm b { display: block; font-weight: 650; font-size: 14px; }
+  .coin .nm b { display: block; font-weight: 600; font-size: 14px; }
   .coin .nm small { display: block; font-size: 12px; color: var(--muted); }
-  .cl { width: 28px; height: 28px; border-radius: 50%; flex: none; object-fit: cover; background: var(--panel2); }
+  .cl { width: 28px; height: 28px; border-radius: var(--r-pill); flex: none; object-fit: cover; background: var(--panel2); }
   .cl.sm { width: 18px; height: 18px; } .cl.lg { width: 40px; height: 40px; }
-  .mono { display: inline-grid; place-items: center; color: #fff; font-weight: 800; font-size: 10px; }
+  .mono { display: inline-grid; place-items: center; color: #fcfcfd; font-weight: 700; font-size: 10px; }
   .cl.sm.mono { font-size: 7px; } .cl.lg.mono { font-size: 14px; }
 
   /* tables (collapse to cards on phones) */
@@ -254,156 +297,167 @@
   /* meters + bars */
   .meter { padding: 12px 0; border-top: 1px solid var(--line2); }
   .meter:first-child { border-top: 0; padding-top: 0; } .meter:last-child { padding-bottom: 0; }
-  .meter .row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 550; }
+  .meter .row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 500; }
+  .meter .row b { font-weight: 600; }
   .meter .hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
-  .track { position: relative; height: 6px; background: var(--track); border-radius: 99px; margin-top: 8px; overflow: hidden; }
-  .track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--up); transition: width .5s; }
+  .track { position: relative; height: 5px; background: var(--track); border-radius: var(--r-pill); margin-top: 8px; overflow: hidden; }
+  .track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--r-pill); background: var(--up); transition: width .6s var(--ease); }
   .track i.warn { background: var(--warn); } .track i.bad { background: var(--down); } .track i.info { background: var(--accent); }
 
-  .rng { position: relative; height: 4px; border-radius: 99px; width: 130px; margin: 7px 0 5px;
+  .rng { position: relative; height: 4px; border-radius: var(--r-pill); width: 130px; margin: 7px 0 5px;
          background: linear-gradient(90deg, var(--down), var(--track) 40%, var(--track) 60%, var(--up)); }
-  .rng .mk { position: absolute; top: 50%; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%; background: var(--text); border: 2px solid var(--panel); }
-  .rng .en { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--muted); border-radius: 1px; }
+  .rng .mk { position: absolute; top: 50%; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: var(--r-pill); background: var(--text); border: 2px solid var(--panel); }
+  .rng .en { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--muted); border-radius: var(--r-pill); }
   .rng-l { display: flex; justify-content: space-between; gap: 8px; width: 130px; font-size: 11px; color: var(--muted); }
 
-  .gauge { position: relative; height: 8px; border-radius: 99px; background: var(--track); }
+  .gauge { position: relative; height: 8px; border-radius: var(--r-pill); background: var(--track); }
   .gauge .z { position: absolute; top: 0; bottom: 0; }
-  .gauge .z.l { right: 0; border-radius: 0 99px 99px 0; background: color-mix(in srgb, var(--up) 28%, transparent); }
-  .gauge .z.s { left: 0; border-radius: 99px 0 0 99px; background: color-mix(in srgb, var(--down) 28%, transparent); }
+  .gauge .z.l { right: 0; border-radius: 0 var(--r-pill) var(--r-pill) 0; background: color-mix(in srgb, var(--up) 28%, transparent); }
+  .gauge .z.s { left: 0; border-radius: var(--r-pill) 0 0 var(--r-pill); background: color-mix(in srgb, var(--down) 28%, transparent); }
   .gauge .c { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); }
-  .gauge .n { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 3px solid var(--panel);
-              box-shadow: 0 0 0 1px var(--line); transition: left .6s cubic-bezier(.2,.8,.2,1); }
+  .gauge .n { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: var(--r-pill); border: 3px solid var(--panel);
+              box-shadow: 0 0 0 1px var(--line); transition: left .6s var(--ease); }
   .gauge.mini { width: 96px; height: 6px; display: inline-block; vertical-align: middle; }
   .gauge.mini .n { width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-width: 2px; }
   .gauge-l { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 6px; }
   .scorecell { display: inline-flex; align-items: center; gap: 10px; }
-  .scorecell b { width: 42px; text-align: right; }
+  .scorecell b { width: 46px; text-align: right; font-weight: 600; }
 
   /* alerts */
   #alerts { display: grid; gap: 10px; }
   #alerts:not(:empty) { margin-bottom: 16px; }
-  .alert { display: flex; gap: 12px; align-items: flex-start; border-radius: 12px; padding: 12px 14px; background: var(--warn-bg);
+  .alert { display: flex; gap: 12px; align-items: flex-start; border-radius: var(--r-surface); padding: 12px 14px; background: var(--warn-bg);
            border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent); }
   .alert.err { background: var(--down-bg); border-color: color-mix(in srgb, var(--down) 35%, transparent); }
-  .alert svg.i { color: var(--warn); margin-top: 1px; } .alert.err svg.i { color: var(--down); }
-  .alert b { display: block; font-size: 13.5px; } .alert span { font-size: 13px; color: var(--text2); }
+  .alert .i { color: var(--warn); margin-top: 1px; } .alert.err .i { color: var(--down); }
+  .alert b { display: block; font-size: 13.5px; font-weight: 600; } .alert span { font-size: 13px; color: var(--text2); }
 
   /* status card */
   .status { display: flex; gap: 12px; align-items: center; }
-  .status .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+  .status .ic { width: 40px; height: 40px; border-radius: var(--r-control); display: grid; place-items: center; flex: none; }
+  .status .ic .i { font-size: 20px; }
   .status.run .ic { background: var(--up-bg); color: var(--up); } .status.pause .ic { background: var(--warn-bg); color: var(--warn); }
   .status.halt .ic { background: var(--down-bg); color: var(--down); }
-  .status b { display: block; font-size: 15px; font-weight: 650; } .status span { font-size: 12.5px; color: var(--text2); }
-  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line2); border-radius: 10px; overflow: hidden; margin-top: 14px;
+  .status b { display: block; font-size: 15px; font-weight: 600; } .status span { font-size: 12.5px; color: var(--text2); }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line2); border-radius: var(--r-control); overflow: hidden; margin-top: 14px;
            border: 1px solid var(--line2); }
-  .facts div { background: var(--panel); padding: 9px 11px; font-size: 13px; font-weight: 600; }
-  .facts small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 500; }
-  .barprog { height: 3px; background: var(--track); border-radius: 99px; margin-top: 6px; overflow: hidden; }
-  .barprog i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+  .facts div { background: var(--panel); padding: 9px 11px; font-size: 13px; font-weight: 550; }
+  .facts small { display: flex; align-items: center; font-size: 11.5px; color: var(--muted); font-weight: 400; }
+  .barprog { height: 3px; background: var(--track); border-radius: var(--r-pill); margin-top: 6px; overflow: hidden; }
+  .barprog i { display: block; height: 100%; background: var(--accent); border-radius: var(--r-pill); }
   .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
 
   /* charts */
   .chartbox { position: relative; height: 300px; }
   .chartbox.tall { height: 440px; }
-  @media (max-width: 760px) { .chartbox { height: 220px; } .chartbox.tall { height: 340px; } }
+  @media (max-width: 760px) { .chartbox, .pf .chartbox { height: 220px; } .chartbox.tall { height: 340px; } }
   .chart-msg { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; color: var(--muted); font-size: 13px; text-align: center;
                padding: 20px; background: var(--panel); }
-  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); }
-  .legend i { display: inline-block; width: 12px; height: 2px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+  .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 12px; height: 2px; vertical-align: middle; margin-right: 5px; border-radius: var(--r-pill); }
 
   /* market detail */
   .dhead { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .dhead .px { font-size: 24px; font-weight: 750; letter-spacing: -.02em; }
-  .dstats { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; font-weight: 600; margin-left: auto; }
-  .dstats small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 500; }
+  .dhead .px { font-size: 24px; font-weight: 600; letter-spacing: -.03em; }
+  .dstats { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; font-weight: 550; margin-left: auto; }
+  .dstats small { display: flex; align-items: center; font-size: 11.5px; color: var(--muted); font-weight: 400; }
   @media (max-width: 760px) { .dstats { margin-left: 0; width: 100%; gap: 16px; } }
   .score-big { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-  .score-big b { font-size: 34px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
-  .note { margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line2); font-size: 12.5px; color: var(--text2); }
+  .score-big b { font-size: 34px; font-weight: 600; letter-spacing: -.04em; line-height: 1; }
+  .note { margin-top: 14px; padding: 10px 12px; border-radius: var(--r-control); background: var(--panel2); border: 1px solid var(--line2); font-size: 12.5px; color: var(--text2); }
   .note b { color: var(--text); font-weight: 600; display: block; font-size: 13px; }
-  .fac { display: grid; grid-template-columns: minmax(0, 1fr) 80px 42px; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line2); }
+  .fac { display: grid; grid-template-columns: minmax(0, 1fr) 80px 46px; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line2); }
   .fac:first-child { border-top: 0; padding-top: 0; }
-  .fac .nm { font-size: 13px; font-weight: 550; } .fac .nm small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 400; }
-  .fac .db { position: relative; height: 5px; background: var(--track); border-radius: 99px; }
-  .fac .db i { position: absolute; top: 0; bottom: 0; border-radius: 99px; }
+  .fac .nm { font-size: 13px; font-weight: 500; } .fac .nm small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 400; }
+  .fac .db { position: relative; height: 5px; background: var(--track); border-radius: var(--r-pill); }
+  .fac .db i { position: absolute; top: 0; bottom: 0; border-radius: var(--r-pill); }
   .fac .db::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); }
-  .fac .v { text-align: right; font-weight: 650; font-size: 13px; }
+  .fac .v { text-align: right; font-weight: 600; font-size: 13px; }
   .fac.off { opacity: .4; }
-  .ai3 { display: flex; height: 7px; border-radius: 99px; overflow: hidden; gap: 2px; margin: 8px 0 6px; }
+  .ai3 { display: flex; height: 7px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; margin: 8px 0 6px; }
   .ai3 i:nth-child(1) { background: var(--up); } .ai3 i:nth-child(2) { background: var(--muted); } .ai3 i:nth-child(3) { background: var(--down); }
 
   .mood { display: grid; grid-template-columns: 170px 1fr; gap: 24px; align-items: center; }
   @media (max-width: 560px) { .mood { grid-template-columns: 1fr; justify-items: center; } }
   .fng { text-align: center; }
   .fng svg { width: 170px; height: 98px; display: block; margin: 0 auto; }
-  .fng b { display: block; font-size: 26px; font-weight: 800; margin-top: 2px; letter-spacing: -.03em; line-height: 1.1; }
-  .fng small { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  .fng b { display: block; font-size: 26px; font-weight: 600; margin-top: 2px; letter-spacing: -.03em; line-height: 1.1; }
+  .fng small { font-size: 12.5px; color: var(--muted); font-weight: 500; }
   .mrow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line2); font-size: 13px; width: 100%; }
   .mrow:first-child { border-top: 0; padding-top: 0; }
   .mrow small { display: block; color: var(--muted); font-size: 11.5px; }
   .news { list-style: none; margin: 0; padding: 0; }
-  .news li { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line2); font-size: 13px; color: var(--text2); }
+  .news li { padding: 10px 0; border-top: 1px solid var(--line2); font-size: 13px; color: var(--text2); }
   .news li:first-child { border-top: 0; padding-top: 0; }
-  .news li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; margin-top: 7px; }
 
-  pre.log { font: 11.5px/1.6 ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word;
+  pre.log { font: 11.5px/1.6 var(--mono); white-space: pre-wrap; word-break: break-word;
             max-height: 460px; overflow: auto; margin: 0; padding: 14px 18px; color: var(--text2); }
   pre.log .w { color: var(--warn); } pre.log .e { color: var(--down); } pre.log .o { color: var(--up); } pre.log .ts { color: var(--muted); }
 
   .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  select.sel { font: inherit; font-size: 13px; font-weight: 550; padding: 5px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); }
+  select.sel { font: inherit; font-size: 13px; font-weight: 500; padding: 5px 10px; border-radius: var(--r-control); border: 1px solid var(--line); background: var(--panel2); color: var(--text); }
 
   /* settings */
   .set-wrap { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 24px; align-items: start; max-width: 1040px; }
   .set-nav { position: sticky; top: 84px; display: grid; gap: 2px; }
-  .set-nav a { display: block; padding: 7px 10px; border-radius: 8px; color: var(--text2); text-decoration: none; font-size: 13.5px; font-weight: 550; }
+  .set-nav a { display: block; padding: 7px 10px; border-radius: var(--r-control); color: var(--text2); text-decoration: none; font-size: 13.5px; font-weight: 500; }
   .set-nav a:hover { background: var(--hover); color: var(--text); }
   @media (max-width: 900px) { .set-wrap { grid-template-columns: 1fr; } .set-nav { display: none; } }
   .set-grid { display: grid; gap: 16px; }
   .fld { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; border-top: 1px solid var(--line2); }
   .fld:first-child { border-top: 0; padding-top: 0; } .fld:last-child { padding-bottom: 0; }
-  .fld .lb { font-size: 13.5px; font-weight: 600; min-width: 0; }
+  .fld .lb { font-size: 13.5px; font-weight: 550; min-width: 0; }
   .fld .lb small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; margin-top: 2px; }
   .fld.col { flex-direction: column; align-items: stretch; gap: 8px; }
-  .fld input, .fld select, .fld textarea { font: inherit; font-size: 15px; padding: 8px 11px; border-radius: 9px; border: 1px solid var(--line);
+  .fld input, .fld select, .fld textarea { font: inherit; font-size: 15px; padding: 8px 11px; border-radius: var(--r-control); border: 1px solid var(--line);
                                            background: var(--panel2); color: var(--text); width: 140px; flex: none; }
   .fld input[type=number] { text-align: right; font-variant-numeric: tabular-nums; }
   .fld select { width: 160px; }
-  .fld textarea { width: 100%; min-height: 84px; resize: vertical; font-size: 13px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .fld textarea { width: 100%; min-height: 84px; resize: vertical; font-size: 13px; font-family: var(--mono); }
   .fld.col input { width: 100%; }
   .fld input:focus, .fld select:focus, .fld textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
   .fld .sw { position: relative; width: 44px; height: 26px; flex: none; }
   .fld .sw input { opacity: 0; width: 100%; height: 100%; margin: 0; padding: 0; position: absolute; inset: 0; cursor: pointer; z-index: 1; }
-  .fld .sw span { position: absolute; inset: 0; border-radius: 99px; background: var(--track); border: 1px solid var(--line); transition: background .2s; }
-  .fld .sw span::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff;
-                         box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s; }
+  .fld .sw span { position: absolute; inset: 0; border-radius: var(--r-pill); background: var(--track); border: 1px solid var(--line); transition: background-color .2s var(--ease); }
+  .fld .sw span::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: var(--r-pill); background: #fcfcfd;
+                         box-shadow: 0 1px 3px rgb(0 0 0 / .25); transition: transform .25s var(--ease); }
   .fld .sw input:checked + span { background: var(--accent); border-color: var(--accent); }
   .fld .sw input:checked + span::after { transform: translateX(18px); }
   .fld .sw input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
   @media (max-width: 420px) { .fld input { width: 108px; } .fld select { width: 130px; } }
   .savebar { position: sticky; bottom: 16px; z-index: 5; margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
-             padding: 10px 10px 10px 18px; border-radius: 14px; background: var(--text); color: var(--bg); box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+             padding: 10px 10px 10px 18px; border-radius: var(--r-surface); background: var(--text); color: var(--bg); box-shadow: var(--pop); }
   @media (max-width: 900px) { .savebar { bottom: calc(84px + env(safe-area-inset-bottom)); } }
-  .savebar span { font-size: 13.5px; font-weight: 600; }
+  .savebar span { font-size: 13.5px; font-weight: 550; }
   .savebar .btn:not(.primary) { background: transparent; color: var(--bg); border-color: color-mix(in srgb, var(--bg) 30%, transparent); }
 
   /* dialog + toast */
-  dialog { border: 1px solid var(--line); border-radius: 16px; padding: 0; background: var(--panel); color: var(--text); width: min(420px, calc(100vw - 32px));
-           box-shadow: 0 24px 60px rgba(0,0,0,.35); }
-  dialog::backdrop { background: rgba(5, 7, 12, .55); backdrop-filter: blur(3px); }
+  dialog { border: 1px solid var(--line); border-radius: var(--r-surface); padding: 0; background: var(--panel); color: var(--text); width: min(420px, calc(100vw - 32px));
+           box-shadow: var(--pop); }
+  dialog::backdrop { background: rgb(9 9 11 / .6); }
   .dlg { padding: 22px; }
-  .dlg .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--down-bg); color: var(--down); margin-bottom: 14px; }
+  .dlg .ic { width: 42px; height: 42px; border-radius: var(--r-control); display: grid; place-items: center; background: var(--down-bg); color: var(--down); margin-bottom: 14px; }
+  .dlg .ic .i { font-size: 22px; }
   .dlg .ic.ok { background: var(--accent-bg); color: var(--accent); }
-  .dlg h3 { margin: 0 0 6px; font-size: 16.5px; font-weight: 700; letter-spacing: -.01em; }
+  .dlg h3 { margin: 0 0 6px; font-size: 16.5px; font-weight: 600; letter-spacing: -.01em; }
   .dlg p { margin: 0; color: var(--text2); font-size: 13.5px; }
-  .dlg input { width: 100%; margin-top: 14px; font: inherit; font-size: 15px; font-weight: 700; letter-spacing: .1em; padding: 10px 12px; border-radius: 10px;
+  .dlg input { width: 100%; margin-top: 14px; font: inherit; font-size: 15px; font-weight: 650; letter-spacing: .1em; padding: 10px 12px; border-radius: var(--r-control);
                border: 1px solid var(--line); background: var(--panel2); color: var(--text); }
   .dlg .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
   #toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translate(-50%, 16px); opacity: 0; display: flex; gap: 8px;
-           align-items: center; background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 600; font-size: 13.5px;
-           max-width: calc(100vw - 32px); z-index: 30; pointer-events: none; transition: opacity .2s, transform .2s; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+           align-items: center; background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: var(--r-surface); font-weight: 550; font-size: 13.5px;
+           max-width: calc(100vw - 32px); z-index: 30; pointer-events: none; transition: opacity .25s var(--ease), transform .35s var(--ease); box-shadow: var(--pop); }
   #toast.on { opacity: 1; transform: translate(-50%, 0); }
   @media (max-width: 900px) { #toast { bottom: calc(90px + env(safe-area-inset-bottom)); } }
+
+  /* page change: panels settle in top to bottom, so it's clear the view switched. Off for reduced motion. */
+  @media (prefers-reduced-motion: no-preference) {
+    [data-page]:not([hidden]) .card, [data-page]:not([hidden]) .set-nav { animation: rise .5s var(--ease) both; }
+    .col > :nth-child(2) { animation-delay: 50ms !important; } .col > :nth-child(3) { animation-delay: 100ms !important; }
+    .col + .col > :nth-child(1) { animation-delay: 40ms !important; }
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0s !important; } }
 </style>
 </head>
 <body>
@@ -412,30 +466,6 @@
     <linearGradient id="brandG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b7cff"/><stop offset="1" stop-color="#4f46e5"/></linearGradient>
     <symbol id="brand" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="url(#brandG)"/>
       <path d="M7 21.5l5.5-5.5 4 4L25 11.5" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="25" cy="11.5" r="2.4" fill="#fff"/></symbol>
-    <symbol id="i-home" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
-    <symbol id="i-candle" viewBox="0 0 24 24"><path d="M7 3v3M7 16v5M17 3v5M17 18v3"/><rect x="4.5" y="6" width="5" height="10" rx="1"/><rect x="14.5" y="8" width="5" height="10" rx="1"/></symbol>
-    <symbol id="i-list" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
-    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
-    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
-    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
-    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
-    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
-    <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol>
-    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
-    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></symbol>
-    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4M12 17h.01"/></symbol>
-    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.7 9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
-    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></symbol>
-    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
-    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></symbol>
-    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
-    <symbol id="i-news" viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/></symbol>
-    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.3 19a10 10 0 1 1 17.4 0"/></symbol>
-    <symbol id="i-term" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
-    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></symbol>
-    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
-    <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></symbol>
-    <symbol id="i-pie" viewBox="0 0 24 24"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></symbol>
   </defs>
 </svg>
 
@@ -444,11 +474,11 @@
     <div class="logo"><svg><use href="#brand"/></svg><div><b>Trading Bot</b><small>Hyperliquid perps</small></div></div>
     <nav class="nav" id="nav"></nav>
     <div class="side-foot">
-      <div class="botcard"><div class="r"><span class="dot stale" id="sDot"></span><b id="sState">Connecting…</b></div><div class="s" id="sSub">–</div></div>
+      <div class="botcard"><div class="r"><span class="dot stale" id="sDot"></span><b id="sState">Connecting…</b></div><div class="s" id="sSub">-</div></div>
       <div class="theme" id="theme" role="group" aria-label="Theme">
-        <button data-th="light" title="Light theme"><svg class="i"><use href="#i-sun"/></svg></button>
-        <button data-th="system" title="Match system"><svg class="i"><use href="#i-monitor"/></svg></button>
-        <button data-th="dark" title="Dark theme"><svg class="i"><use href="#i-moon"/></svg></button>
+        <button data-th="light" title="Light theme" aria-label="Light theme"><i class="ph ph-sun i" aria-hidden="true"></i></button>
+        <button data-th="system" title="Match system" aria-label="Match system"><i class="ph ph-monitor i" aria-hidden="true"></i></button>
+        <button data-th="dark" title="Dark theme" aria-label="Dark theme"><i class="ph ph-moon i" aria-hidden="true"></i></button>
       </div>
     </div>
   </aside>
@@ -458,7 +488,7 @@
       <div class="mlogo"><svg><use href="#brand"/></svg><span class="dot stale" id="mDot"></span></div>
       <h1 id="title">Overview</h1>
       <div class="ticker" id="ticker"></div>
-      <div class="top-r"><span class="mode" id="mode">–</span><button type="button" class="tip" data-tip="mode">i</button></div>
+      <div class="top-r"><span class="mode" id="mode">-</span><button type="button" class="tip" data-tip="mode"><i class="ph ph-info" aria-hidden="true"></i></button></div>
     </header>
 
     <div class="content">
@@ -466,31 +496,31 @@
 
       <!-- ===================== OVERVIEW ===================== -->
       <section data-page="overview">
-        <div class="kpis" id="kpis"></div>
         <div class="grid g-main">
           <div class="col">
-            <div class="card">
-              <div class="card-h"><h2>Equity<button type="button" class="tip" data-tip="eqchart">i</button></h2>
-                <div class="seg" id="ranges"><button data-r="86400">24H</button><button data-r="604800">7D</button><button data-r="2592000">30D</button><button data-r="0">ALL</button></div></div>
-              <div class="card-b" style="padding-top:8px"><div class="chartbox" id="eqChart"></div></div>
+            <div class="card pf">
+              <div class="pf-top"><div id="pfHead"></div>
+                <div class="pf-tools"><div class="seg" id="ranges"><button data-r="86400">24H</button><button data-r="604800">7D</button><button data-r="2592000">30D</button><button data-r="0">ALL</button></div><button type="button" class="tip" data-tip="eqchart"><i class="ph ph-info" aria-hidden="true"></i></button></div></div>
+              <div class="chartbox" id="eqChart"></div>
+              <div class="pf-stats" id="kpis"></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2>Open positions<button type="button" class="tip" data-tip="positions">i</button></h2><span class="sub" id="posSub"></span></div>
+              <div class="card-h"><h2>Open positions<button type="button" class="tip" data-tip="positions"><i class="ph ph-info" aria-hidden="true"></i></button></h2><span class="sub" id="posSub"></span></div>
               <div class="card-b flush" id="positions"></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2>Signals<button type="button" class="tip" data-tip="signals">i</button></h2><button class="btn sm" data-go="markets">Open markets</button></div>
+              <div class="card-h"><h2>Signals<button type="button" class="tip" data-tip="signals"><i class="ph ph-info" aria-hidden="true"></i></button></h2><button class="btn sm" data-go="markets">Open markets</button></div>
               <div class="card-b flush" id="sigMini"></div>
             </div>
           </div>
           <div class="col">
             <div class="card"><div class="card-b" id="statusCard"></div></div>
             <div class="card">
-              <div class="card-h"><h2><svg class="i"><use href="#i-shield"/></svg>Safety limits<button type="button" class="tip" data-tip="safety">i</button></h2></div>
+              <div class="card-h"><h2><i class="ph ph-shield-check i" aria-hidden="true"></i>Safety limits<button type="button" class="tip" data-tip="safety"><i class="ph ph-info" aria-hidden="true"></i></button></h2></div>
               <div class="card-b" id="meters"></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2>Recent trades<button type="button" class="tip" data-tip="recent">i</button></h2><button class="btn sm" data-go="trades">View all</button></div>
+              <div class="card-h"><h2>Recent trades<button type="button" class="tip" data-tip="recent"><i class="ph ph-info" aria-hidden="true"></i></button></h2><button class="btn sm" data-go="trades">View all</button></div>
               <div class="card-b flush" id="recent"></div>
             </div>
           </div>
@@ -500,7 +530,7 @@
       <!-- ===================== MARKETS ===================== -->
       <section data-page="markets" hidden>
         <div class="card" style="margin-bottom:16px">
-          <div class="card-h"><h2>Watchlist<button type="button" class="tip" data-tip="watchlist">i</button></h2><span class="sub" id="mkSub">Live from Hyperliquid</span></div>
+          <div class="card-h"><h2>Watchlist<button type="button" class="tip" data-tip="watchlist"><i class="ph ph-info" aria-hidden="true"></i></button></h2><span class="sub" id="mkSub">Live from Hyperliquid</span></div>
           <div class="card-b flush" id="mkTable"></div>
         </div>
         <div class="grid g-main">
@@ -511,21 +541,21 @@
                 <div class="legend" id="cLegend" style="margin-top:10px"></div></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2><svg class="i"><use href="#i-gauge"/></svg>Market mood<button type="button" class="tip" data-tip="mood">i</button></h2><span class="sub">feeds into every coin's score</span></div>
+              <div class="card-h"><h2><i class="ph ph-gauge i" aria-hidden="true"></i>Market mood<button type="button" class="tip" data-tip="mood"><i class="ph ph-info" aria-hidden="true"></i></button></h2><span class="sub">feeds into every coin's score</span></div>
               <div class="card-b" id="mood"></div>
             </div>
           </div>
           <div class="col">
             <div class="card">
-              <div class="card-h"><h2><svg class="i"><use href="#i-target"/></svg>Bot signal<button type="button" class="tip" data-tip="botsignal">i</button></h2><span class="sub" id="sigWhen"></span></div>
+              <div class="card-h"><h2><i class="ph ph-target i" aria-hidden="true"></i>Bot signal<button type="button" class="tip" data-tip="botsignal"><i class="ph ph-info" aria-hidden="true"></i></button></h2><span class="sub" id="sigWhen"></span></div>
               <div class="card-b" id="dSignal"></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2><svg class="i"><use href="#i-pie"/></svg>What drives the score<button type="button" class="tip" data-tip="factors">i</button></h2></div>
+              <div class="card-h"><h2><i class="ph ph-chart-pie-slice i" aria-hidden="true"></i>What drives the score<button type="button" class="tip" data-tip="factors"><i class="ph ph-info" aria-hidden="true"></i></button></h2></div>
               <div class="card-b" id="dFactors"></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2><svg class="i"><use href="#i-news"/></svg>Headlines<button type="button" class="tip" data-tip="headlines">i</button></h2></div>
+              <div class="card-h"><h2><i class="ph ph-newspaper i" aria-hidden="true"></i>Headlines<button type="button" class="tip" data-tip="headlines"><i class="ph ph-info" aria-hidden="true"></i></button></h2></div>
               <div class="card-b" id="news"></div>
             </div>
           </div>
@@ -534,15 +564,15 @@
 
       <!-- ===================== TRADES ===================== -->
       <section data-page="trades" hidden>
-        <div class="kpis" id="tKpis"></div>
         <div class="grid g-main">
           <div class="col">
-            <div class="card">
-              <div class="card-h"><h2>Cumulative realized P&amp;L<button type="button" class="tip" data-tip="cum">i</button></h2><span class="sub" id="cumSub"></span></div>
-              <div class="card-b" style="padding-top:8px"><div class="chartbox" id="pnlChart"></div></div>
+            <div class="card pf">
+              <div class="pf-top"><div id="cumHead"></div></div>
+              <div class="chartbox" id="pnlChart"></div>
+              <div class="pf-stats" id="tKpis"></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2>Trade history<button type="button" class="tip" data-tip="history">i</button></h2>
+              <div class="card-h"><h2>Trade history<button type="button" class="tip" data-tip="history"><i class="ph ph-info" aria-hidden="true"></i></button></h2>
                 <div class="filters"><div class="seg" id="tFilter"><button data-f="all" aria-pressed="true">All</button><button data-f="win" aria-pressed="false">Wins</button><button data-f="loss" aria-pressed="false">Losses</button></div>
                   <select class="sel" id="tCoin" aria-label="Filter by coin"><option value="">All coins</option></select></div></div>
               <div class="card-b flush" id="trades"></div>
@@ -550,12 +580,12 @@
           </div>
           <div class="col">
             <div class="card">
-              <div class="card-h"><h2>By coin<button type="button" class="tip" data-tip="bycoin">i</button></h2></div>
+              <div class="card-h"><h2>By coin<button type="button" class="tip" data-tip="bycoin"><i class="ph ph-info" aria-hidden="true"></i></button></h2></div>
               <div class="card-b flush" id="byCoin"></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2><svg class="i"><use href="#i-term"/></svg>Activity log<button type="button" class="tip" data-tip="log">i</button></h2><span class="sub">last 40 lines</span></div>
-              <pre class="log" id="log">–</pre>
+              <div class="card-h"><h2><i class="ph ph-terminal-window i" aria-hidden="true"></i>Activity log<button type="button" class="tip" data-tip="log"><i class="ph ph-info" aria-hidden="true"></i></button></h2><span class="sub">last 40 lines</span></div>
+              <pre class="log" id="log">-</pre>
             </div>
           </div>
         </div>
@@ -596,13 +626,17 @@
 // ======================================================================
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const ic = n => `<svg class="i"><use href="#i-${n}"/></svg>`;
+// Phosphor icons (MIT, regular weight). Short names used across this file -> Phosphor glyph names.
+const ICONS = { home: "squares-four", candle: "chart-line-up", list: "arrows-left-right", sliders: "sliders-horizontal", pause: "pause", play: "play",
+  x: "x", stop: "stop", alert: "warning", inbox: "tray", check: "check", cpu: "cpu", rise: "arrow-up-right", fall: "arrow-down-right" };
+const ic = n => `<i class="ph ph-${ICONS[n] || n} i" aria-hidden="true"></i>`;
+const sk = (w, h) => `<span class="sk" style="width:${w}px;height:${h}px"></span>`;  // skeleton placeholder until the first update
 const sgn = v => v > 0 ? "+" : v < 0 ? "−" : "";
-const usd = (v, signed) => v == null || isNaN(v) ? "–" : (signed ? sgn(v) : v < 0 ? "−" : "") + "$" +
+const usd = (v, signed) => v == null || isNaN(v) ? "-" : (signed ? sgn(v) : v < 0 ? "−" : "") + "$" +
   Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const compact = v => v == null || isNaN(v) ? "–" : "$" + Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(v);
-const pct = (v, d = 2) => v == null || !isFinite(v) ? "–" : sgn(v) + Math.abs(v).toFixed(d) + "%";
-const px = v => { if (v == null || isNaN(v)) return "–"; const a = Math.abs(v);
+const compact = v => v == null || isNaN(v) ? "-" : "$" + Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(v);
+const pct = (v, d = 2) => v == null || !isFinite(v) ? "-" : sgn(v) + Math.abs(v).toFixed(d) + "%";
+const px = v => { if (v == null || isNaN(v)) return "-"; const a = Math.abs(v);
   return Number(v).toLocaleString("en-US", a >= 1000 ? { maximumFractionDigits: 1 } : a >= 100 ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : a >= 1 ? { minimumFractionDigits: 2, maximumFractionDigits: 4 } : { maximumSignificantDigits: 5 }); };
 const num2 = v => sgn(v) + Math.abs(v).toFixed(2);
 const cls = v => v > 0 ? "up" : v < 0 ? "down" : "";
@@ -611,7 +645,7 @@ const dur = s => { s = Math.max(0, Math.round(s)); return s < 60 ? s + "s" : s <
   s < 86400 ? Math.floor(s / 3600) + "h " + Math.round(s % 3600 / 60) + "m" : Math.floor(s / 86400) + "d " + Math.round(s % 86400 / 3600) + "h"; };
 const ago = t => t ? dur(Date.now() / 1000 - t) + " ago" : "";
 const when = t => new Date(t * 1000).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-const delta = (v, txt) => `<span class="delta ${cls(v)} num">${v > 0 ? "▲" : v < 0 ? "▼" : ""} ${txt}</span>`;
+const delta = (v, txt) => `<span class="delta ${cls(v)} num">${v > 0 ? ic("rise") : v < 0 ? ic("fall") : ""}${txt}</span>`;
 const store = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 const barSecs = iv => { const m = /^(\d+)([mhdw])$/.exec(iv || ""); return m ? m[1] * { m: 60, h: 3600, d: 86400, w: 604800 }[m[2]] : 0; };
 const sideTag = (s, short) => s ? `<span class="tag ${s > 0 ? "long" : "short"}">${s > 0 ? (short ? "L" : "LONG") : (short ? "S" : "SHORT")}</span>` : "";
@@ -629,7 +663,7 @@ const GLOSS = {
   entrymark: ["Entry / Mark", "Entry is the price the position was opened at. Mark (below it) is the current price used to value it."],
   stoptarget: ["Stop → Target", "The stop closes the trade automatically to cap the loss; the target closes it to take profit. The dot shows where the price is now, the line where it was entered."],
   pospnl: ["P&L", "Profit or loss on this position at the current price. The % is how far the price has moved for you (+) or against you (−)."],
-  held: ["Held", "How long the position has been open. The bot closes any position held longer than the max hold time (240 hours by default). Shows – if the position was opened outside the bot."],
+  held: ["Held", "How long the position has been open. The bot closes any position held longer than the max hold time (240 hours by default). Shows - if the position was opened outside the bot."],
   signals: ["Signals", "Each coin's latest bot score and what the bot thinks of it. Tap a row to open its chart."],
   perp: ["Market", "These are perpetual futures (perps): contracts that track a coin's price with no expiry. You can bet on the price rising (long) or falling (short), with leverage. The × is the maximum leverage the exchange allows."],
   price: ["Price", "The current mid price on Hyperliquid: halfway between the best buy and sell offers. Refreshes every 15 seconds."],
@@ -664,7 +698,7 @@ const GLOSS = {
   f_fear_greed: ["Fear & Greed", "Contrarian: extreme greed leans short, extreme fear leans long."],
   f_news: ["News", "An AI reads recent headlines and scores the mood. Needs the AI signal turned on in Settings."],
   mood: ["Market mood", "Market-wide readings that feed into every coin's score."],
-  fng: ["Fear & Greed index", "A daily 0–100 gauge of crypto market mood from alternative.me. The bot uses it the opposite way: fear nudges it toward buying, greed toward selling."],
+  fng: ["Fear & Greed index", "A daily 0-100 gauge of crypto market mood from alternative.me. The bot uses it the opposite way: fear nudges it toward buying, greed toward selling."],
   newssent: ["News sentiment", "An AI's read of recent headlines, from −1 (negative) to +1 (positive). Only works when the AI signal is on."],
   crash: ["Crash-risk probability", "An AI's estimate that the headlines point to a sharp drop. Above the threshold, the bot stops opening trades."],
   aiuse: ["AI usage", "How many AI calls the bot has made since it started, and what they cost."],
@@ -685,7 +719,7 @@ const GLOSS = {
   coinpnl: ["P&L", "Total profit or loss from this coin's trades, after fees."],
   log: ["Activity log", "The bot's last 40 log lines, newest at the bottom. Green lines are trades, yellow are warnings, red are errors."],
 };
-const tip = k => GLOSS[k] ? `<button type="button" class="tip" data-tip="${k}" aria-label="What is ${esc(GLOSS[k][0])}?">i</button>` : "";
+const tip = k => GLOSS[k] ? `<button type="button" class="tip" data-tip="${k}" aria-label="What is ${esc(GLOSS[k][0])}?"><i class="ph ph-info" aria-hidden="true"></i></button>` : "";
 const ml = (l, k) => `<span class="ml">${l}${tip(k)}</span>`;  // a table cell's label when the table becomes cards on phones
 let tipKey = null, tipPinned = false;
 function showTip(btn, pin) {
@@ -715,7 +749,7 @@ addEventListener("scroll", () => tipKey && hideTip(), { capture: true, passive: 
 addEventListener("resize", () => tipKey && hideTip());
 document.querySelectorAll(".tip[data-tip]").forEach(b => GLOSS[b.dataset.tip] && b.setAttribute("aria-label", `What is ${GLOSS[b.dataset.tip][0]}?`));
 
-let S = {}, CFG = null, MK = {}, MK_ERR = null, PAGE = "overview";
+let S = {}, CFG = null, MK = {}, MK_ERR = null, PAGE = "overview", WAIT = true;  // WAIT: no answer from the bot yet, show skeletons
 let RANGE = Number(store.get("eqRange", 604800)), SEL = store.get("coin", ""), TF = "all", TCOIN = "";
 
 // ---------- coin logos: open-source icon set, then Hyperliquid's, then a coloured monogram ----------
@@ -799,6 +833,7 @@ function applyTheme(t) {
 }
 $("theme").addEventListener("click", e => { const b = e.target.closest("button"); if (b) applyTheme(b.dataset.th); });
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => themeCharts());
+if (document.fonts) document.fonts.ready.then(() => themeCharts());  // charts draw on canvas, so redraw once Geist Mono has loaded
 
 // ======================================================================
 // charts (TradingView Lightweight Charts, Apache-2.0; attribution logo kept on)
@@ -810,7 +845,7 @@ const CH = {};
 function baseOpts() {
   return {
     autoSize: true,
-    layout: { background: { type: "solid", color: css("--panel") }, textColor: css("--muted"), fontFamily: "Inter, system-ui, sans-serif", fontSize: 11, attributionLogo: true },
+    layout: { background: { type: "solid", color: css("--panel") }, textColor: css("--muted"), fontFamily: css("--mono"), fontSize: 11, attributionLogo: true },
     grid: { vertLines: { visible: false }, horzLines: { color: css("--grid") } },
     rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.12, bottom: 0.08 } },
     timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false },
@@ -966,7 +1001,10 @@ function gauge(score, thr, mini) {
   return `<div class="gauge ${mini ? "mini" : ""}"><span class="z s" style="width:${z}%"></span><span class="z l" style="width:${z}%"></span><span class="c"></span>
     <span class="n" style="left:${n}%;background:${score >= 0 ? "var(--up)" : "var(--down)"}"></span></div>`;
 }
-const scoreCell = (d, thr) => d ? `<span class="scorecell">${gauge(d.score, thr, 1)}<b class="num ${cls(d.score)}">${num2(d.score)}</b></span>` : "–";
+// the numbers under a portfolio chart: [label, value, sub], skeletons until the bot's first update
+const statStrip = rows => rows.map(([l, v, s]) =>
+  `<div class="st"><div class="l">${l}</div><div class="v num">${WAIT ? sk(90, 22) : v}</div><div class="s">${WAIT ? sk(120, 14) : s || "&nbsp;"}</div></div>`).join("");
+const scoreCell = (d, thr) => d ? `<span class="scorecell">${gauge(d.score, thr, 1)}<b class="num ${cls(d.score)}">${num2(d.score)}</b></span>` : "-";
 const chg = m => m && m.prev ? (m.px - m.prev) / m.prev * 100 : null;
 
 // ======================================================================
@@ -979,7 +1017,7 @@ function render() {
   $("sDot").className = $("mDot").className = "dot" + (stale ? " stale" : S.paused || S.day_halt ? " paused" : "");
   $("sState").textContent = !S.t ? "Connecting…" : stale ? "Not responding" : halted ? "Kill switch" : S.paused ? "Paused" : S.day_halt ? "Done for today" : "Running";
   $("sSub").textContent = S.t ? (stale ? "last seen " : "heartbeat ") + ago(S.t) : "waiting for the bot";
-  $("mode").textContent = S.mode ? S.mode + (S.interval ? " · " + S.interval : "") : "–"; $("mode").className = "mode " + (S.mode || "");
+  $("mode").textContent = S.mode ? S.mode + (S.interval ? " · " + S.interval : "") : "-"; $("mode").className = "mode " + (S.mode || "");
   document.querySelectorAll('[data-ct="overview"]').forEach(e => { e.textContent = P.length; e.hidden = !P.length; });
   const dayD = S.day_start ? S.equity - S.day_start : null;
   document.title = S.equity != null ? `${usd(S.equity)}${dayD != null ? " (" + pct(dayD / S.day_start * 100) + ")" : ""} · Trading Bot` : "Trading Bot";
@@ -1000,12 +1038,14 @@ function render() {
   const hist = S.equity_hist || [];
   const start = S.mode === "paper" && CFG ? CFG.paper_start_equity : hist.length ? hist[0][1] : null;
   const upnl = P.reduce((a, p) => a + p.side * (markOf(p) - p.entry) * p.size, 0), real = C.reduce((a, t) => a + t.pnl, 0), wins = C.filter(t => t.pnl > 0);
-  const kpi = (icon, l, v, s) => `<div class="card kpi"><div class="l">${ic(icon)}${l}</div><div class="v num">${v}</div><div class="s">${s}</div></div>`;
-  $("kpis").innerHTML =
-    kpi("wallet", "Account equity" + tip("equity"), usd(S.equity), start ? `${delta(S.equity - start, pct((S.equity - start) / start * 100))} ${S.mode === "paper" ? "since start" : "since tracking"}` : "&nbsp;") +
-    kpi("cal", "Today's P&amp;L" + tip("today"), `<span class="${cls(dayD)}">${usd(dayD, 1)}</span>`, dayD != null ? `${delta(dayD, pct(dayD / S.day_start * 100))} since 00:00 UTC` : "&nbsp;") +
-    kpi("layers", "Unrealized P&amp;L" + tip("upnl"), `<span class="${cls(upnl)}">${usd(upnl, 1)}</span>`, `${P.length} open position${P.length === 1 ? "" : "s"}`) +
-    kpi("target", "Win rate" + tip("winrate"), C.length ? Math.round(wins.length / C.length * 100) + "%" : "–", C.length ? `${wins.length}W · ${C.length - wins.length}L · <span class="${cls(real)}">${usd(real, 1)}</span> realized` : "no closed trades yet");
+  $("pfHead").innerHTML = `<div class="pf-l">Account equity${tip("equity")}</div>` + (!WAIT
+    ? `<div class="pf-v num">${usd(S.equity)}</div><div class="pf-d">${start ? `${delta(S.equity - start, pct((S.equity - start) / start * 100))} ${S.mode === "paper" ? "since start" : "since tracking"}` : ""}</div>`
+    : `<div class="pf-v">${sk(210, 40)}</div><div class="pf-d">${sk(150, 18)}</div>`);
+  $("kpis").innerHTML = statStrip([
+    ["Today's P&amp;L" + tip("today"), `<span class="${cls(dayD)}">${usd(dayD, 1)}</span>`, dayD != null ? `${delta(dayD, pct(dayD / S.day_start * 100))} <span class="nw">since 00:00 UTC</span>` : ""],
+    ["Unrealized P&amp;L" + tip("upnl"), `<span class="${cls(upnl)}">${usd(upnl, 1)}</span>`, `${P.length} open position${P.length === 1 ? "" : "s"}`],
+    ["Win rate" + tip("winrate"), C.length ? Math.round(wins.length / C.length * 100) + "%" : "-",
+      C.length ? `${wins.length}W ${C.length - wins.length}L, <span class="${cls(real)}">${usd(real, 1)}</span> realized` : "no closed trades yet"]]);
 
   // ---- status card ----
   const st = halted ? ["halt", "stop", "Stopped by kill switch", "Drawdown limit hit and positions were closed. Review before resuming."]
@@ -1017,10 +1057,10 @@ function render() {
   const bs = barSecs(S.interval), left = bs ? Math.ceil(now / bs) * bs - now : 0;
   $("statusCard").innerHTML = `<div class="status ${st[0]}"><div class="ic">${ic(st[1])}</div><div><b>${st[2]}</b><span>${esc(st[3])}</span></div></div>
     <div class="facts">
-      <div><small>Next decision${tip("nextdec")}</small>${bs ? "in " + dur(left) : "–"}${bs ? `<div class="barprog"><i style="width:${(1 - left / bs) * 100}%"></i></div>` : ""}</div>
-      <div><small>Heartbeat${tip("heartbeat")}</small>${S.t ? ago(S.t) : "–"}</div>
+      <div><small>Next decision${tip("nextdec")}</small>${bs ? "in " + dur(left) : "-"}${bs ? `<div class="barprog"><i style="width:${(1 - left / bs) * 100}%"></i></div>` : ""}</div>
+      <div><small>Heartbeat${tip("heartbeat")}</small>${S.t ? ago(S.t) : "-"}</div>
       <div><small>Entry trigger${tip("entrytrig")}</small>score ±${thr}</div>
-      <div><small>Risk per trade${tip("riskper")}</small>${CFG ? CFG.risk.risk_per_trade_pct + "% of equity" : "–"}</div>
+      <div><small>Risk per trade${tip("riskper")}</small>${CFG ? CFG.risk.risk_per_trade_pct + "% of equity" : "-"}</div>
     </div>
     <div class="acts">
       <button class="btn ${S.paused ? "primary" : ""}" id="pauseBtn">${ic(S.paused ? "play" : "pause")}${S.paused ? "Resume" : "Pause"}</button>
@@ -1051,9 +1091,9 @@ function render() {
         <td class="r num">${ml("Size", "size")}${p.size} ${esc(p.coin)}</td>
         <td class="r num">${ml("Entry / Mark", "entrymark")}${px(p.entry)}<span class="sub2">${px(mark)}</span></td>
         <td>${ml("Stop → Target", "stoptarget")}${p.sl && p.tp ? `<div><div class="rng"><span class="en" style="left:${en}%"></span><span class="mk" style="left:${at}%"></span></div>
-          <div class="rng-l num"><span>${px(p.sl)}</span><span>${px(p.tp)}</span></div></div>` : "–"}</td>
+          <div class="rng-l num"><span>${px(p.sl)}</span><span>${px(p.tp)}</span></div></div>` : "-"}</td>
         <td class="r num ${cls(pnl)}">${ml("P&amp;L", "pospnl")}<b>${usd(pnl, 1)}</b><span class="sub2 ${cls(mv)}">${pct(mv)}</span></td>
-        <td class="r num">${ml("Held", "held")}${p.opened ? dur(now - p.opened) : "–"}</td>
+        <td class="r num">${ml("Held", "held")}${p.opened ? dur(now - p.opened) : "-"}</td>
         <td class="r"><button class="btn sm danger" data-close="${esc(p.coin)}">Close</button></td></tr>`;
     }).join("") + "</tbody></table>"
     : `<div class="empty">${ic("inbox")}<b>No open positions</b>The bot opens one when a signal reaches ±${thr}.</div>`;
@@ -1081,7 +1121,7 @@ function render() {
   const L = $("log"), atB = L.scrollTop + L.clientHeight >= L.scrollHeight - 10;
   L.innerHTML = (S.log || []).map(l => { const e = esc(l), m = /^(\S+ \S+)(.*)$/.exec(e);
     const body = m ? `<span class="ts">${m[1]}</span>${m[2]}` : e;
-    return /ERROR|Traceback|exception/i.test(l) ? `<span class="e">${body}</span>` : /WARNING/.test(l) ? `<span class="w">${body}</span>` : /OPEN |close /.test(l) ? `<span class="o">${body}</span>` : body; }).join("\n") || "–";
+    return /ERROR|Traceback|exception/i.test(l) ? `<span class="e">${body}</span>` : /WARNING/.test(l) ? `<span class="w">${body}</span>` : /OPEN |close /.test(l) ? `<span class="o">${body}</span>` : body; }).join("\n") || "-";
   if (atB) L.scrollTop = L.scrollHeight;
 }
 
@@ -1093,7 +1133,7 @@ function selectCoin(c) {
 
 function renderTicker() {
   $("ticker").innerHTML = watch().map(c => { const m = MK[c], ch = chg(m);
-    return `<button class="tk" data-coin="${esc(c)}" title="Open ${esc(c)} chart">${logo(c, "sm")}<b>${esc(c)}</b><span class="num">${m ? px(m.px) : "–"}</span><span class="chg num ${cls(ch)}">${ch == null ? "" : pct(ch)}</span></button>`; }).join("");
+    return `<button class="tk" data-coin="${esc(c)}" title="Open ${esc(c)} chart">${logo(c, "sm")}<b>${esc(c)}</b><span class="num">${m ? px(m.px) : "-"}</span><span class="chg num ${cls(ch)}">${ch == null ? "" : pct(ch)}</span></button>`; }).join("");
 }
 
 function renderMarkets() {
@@ -1106,9 +1146,9 @@ function renderMarkets() {
         <td class="hd"><div class="coin">${logo(c)}<div class="nm"><b>${esc(c)}-USD</b><small>${m ? "Perp · up to " + m.maxLev + "×" : "Perp"}</small></div></div></td>
         <td class="r num">${ml("Price", "price")}<b>${px(m ? m.px : d && d.price)}</b></td>
         <td class="r num ${cls(ch)}">${ml("24h", "chg24")}${pct(ch)}</td>
-        <td class="r num ${cls(apr)}">${ml("Funding (APR)", "funding")}${apr == null ? "–" : pct(apr, 1)}</td>
-        <td class="r num hide-m hide-l">${ml("Open interest", "oi")}${m ? compact(m.oi) : "–"}</td>
-        <td class="r num hide-m hide-l">${ml("24h volume", "vol")}${m ? compact(m.vol) : "–"}</td>
+        <td class="r num ${cls(apr)}">${ml("Funding (APR)", "funding")}${apr == null ? "-" : pct(apr, 1)}</td>
+        <td class="r num hide-m hide-l">${ml("Open interest", "oi")}${m ? compact(m.oi) : "-"}</td>
+        <td class="r num hide-m hide-l">${ml("24h volume", "vol")}${m ? compact(m.vol) : "-"}</td>
         <td>${ml("Bot score", "score")}${scoreCell(d, thr)}</td>
         <td class="r">${ml("Status", "status")}${statusPill(c, d, thr)}</td></tr>`; }).join("") + "</tbody></table>"
     : `<div class="empty">No coins configured.</div>`;
@@ -1122,11 +1162,11 @@ function renderMarkets() {
   const A = v => v / 100 * Math.PI;
   const needle = fg != null ? (() => { const [x, y] = pt(A(fg), 36); return `<line x1="60" y1="62" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--text)" stroke-width="3" stroke-linecap="round"/><circle cx="60" cy="62" r="4.5" fill="var(--text)"/>`; })() : "";
   $("mood").innerHTML = `<div class="mood"><div class="fng"><svg viewBox="0 0 120 70">${segs.map(([a, b, col], i) => arc(A(a) + (i ? .03 : 0), A(b) - (i < 4 ? .03 : 0), col)).join("")}${needle}</svg>
-      <b class="num">${fg ?? "–"}</b><small>${fg == null ? "unavailable" : fngLabel(fg)}</small><div class="muted" style="font-size:11.5px;margin-top:2px">Fear &amp; Greed index${tip("fng")}</div></div>
+      <b class="num">${fg ?? "-"}</b><small>${fg == null ? "unavailable" : fngLabel(fg)}</small><div class="muted" style="font-size:11.5px;margin-top:2px">Fear &amp; Greed index${tip("fng")}</div></div>
       <div>
-        <div class="mrow"><div>News sentiment${tip("newssent")}<small>AI read of recent headlines, −1 to +1</small></div><b class="num ${cls(s)}">${s == null ? (CFG && !CFG.ai.enabled ? "needs AI" : "–") : num2(s)}</b></div>
-        <div class="mrow"><div>Crash-risk probability${tip("crash")}<small>Blocks new trades at ${Math.round(thrR * 100)}% or more</small></div><b class="num ${r != null && r >= thrR ? "down" : ""}">${r == null ? "–" : Math.round(r * 100) + "%"}</b></div>
-        <div class="mrow"><div>AI usage${tip("aiuse")}<small>${S.ai && S.ai.enabled ? esc(S.ai.provider) : "AI signal is off"}</small></div><b class="num">${S.ai ? S.ai.calls + " calls · $" + (S.ai.usd || 0).toFixed(3) : "–"}</b></div>
+        <div class="mrow"><div>News sentiment${tip("newssent")}<small>AI read of recent headlines, −1 to +1</small></div><b class="num ${cls(s)}">${s == null ? (CFG && !CFG.ai.enabled ? "needs AI" : "-") : num2(s)}</b></div>
+        <div class="mrow"><div>Crash-risk probability${tip("crash")}<small>Blocks new trades at ${Math.round(thrR * 100)}% or more</small></div><b class="num ${r != null && r >= thrR ? "down" : ""}">${r == null ? "-" : Math.round(r * 100) + "%"}</b></div>
+        <div class="mrow"><div>AI usage${tip("aiuse")}<small>${S.ai && S.ai.enabled ? esc(S.ai.provider) : "AI signal is off"}</small></div><b class="num">${S.ai ? S.ai.calls + " calls · $" + (S.ai.usd || 0).toFixed(3) : "-"}</b></div>
       </div></div>`;
   $("news").innerHTML = (S.headlines || []).length ? `<ul class="news">${S.headlines.map(h => `<li>${esc(h)}</li>`).join("")}</ul>` : `<div class="empty" style="padding:16px">No headlines loaded.</div>`;
 
@@ -1134,8 +1174,8 @@ function renderMarkets() {
   const c = SEL, m = MK[c], d = D[c], pos = P.find(p => p.coin === c), ch = chg(m);
   $("dHead").innerHTML = c ? `<div class="dhead">${logo(c, "lg")}<div><div style="font-weight:700;font-size:16px">${esc(c)}-USD <span class="muted" style="font-weight:500;font-size:13px">Perpetual</span></div>
       <div style="display:flex;align-items:center;gap:10px"><span class="px num">${px(m ? m.px : d && d.price)}</span>${ch != null ? delta(ch, pct(ch)) : ""}</div></div>
-      <div class="dstats num"><div><small>Price 24h ago${tip("prev")}</small>${m ? px(m.prev) : "–"}</div><div><small>Funding / hour${tip("fundh")}</small><span class="${cls(m && m.funding)}">${m ? pct(m.funding * 100, 4) : "–"}</span></div>
-      <div><small>Open interest${tip("oi")}</small>${m ? compact(m.oi) : "–"}</div>${pos ? `<div><small>Your position</small><span class="${pos.side > 0 ? "up" : "down"}">${pos.side > 0 ? "Long" : "Short"} ${pos.size}</span></div>` : ""}</div></div>` : "";
+      <div class="dstats num"><div><small>Price 24h ago${tip("prev")}</small>${m ? px(m.prev) : "-"}</div><div><small>Funding / hour${tip("fundh")}</small><span class="${cls(m && m.funding)}">${m ? pct(m.funding * 100, 4) : "-"}</span></div>
+      <div><small>Open interest${tip("oi")}</small>${m ? compact(m.oi) : "-"}</div>${pos ? `<div><small>Your position</small><span class="${pos.side > 0 ? "up" : "down"}">${pos.side > 0 ? "Long" : "Short"} ${pos.size}</span></div>` : ""}</div></div>` : "";
 
   $("sigWhen").textContent = d ? "checked " + ago(d.t) : "";
   if (!d) {
@@ -1154,7 +1194,7 @@ function renderMarkets() {
     const [nm, sub] = FACTORS[k] || [k, ""], w = W8[k] || 0, off = v == null || !w, wd = off ? 0 : Math.abs(clamp(v, -1, 1)) * 50;
     return `<div class="fac ${off ? "off" : ""}"><div class="nm">${esc(nm)}${tip("f_" + k)}<small>${off ? (w ? "no data" : "turned off") : esc(sub) + " · weight " + w}</small></div>
       <div class="db"><i style="left:${v >= 0 ? 50 : 50 - wd}%;width:${wd}%;background:${v >= 0 ? "var(--up)" : "var(--down)"}"></i></div>
-      <div class="v num ${off ? "" : cls(v)}">${off ? "–" : num2(v)}</div></div>`; }).join("") +
+      <div class="v num ${off ? "" : cls(v)}">${off ? "-" : num2(v)}</div></div>`; }).join("") +
     `<div class="muted" style="font-size:12px;margin-top:12px">Each factor reads from −1 (bearish) to +1 (bullish). The score is their weighted average${d.ai ? ", blended with the AI view" : ""}.</div>`;
 }
 $("mkTable").addEventListener("click", e => { const r = e.target.closest("[data-sel]"); if (r) selectCoin(r.dataset.sel); });
@@ -1162,13 +1202,13 @@ $("mkTable").addEventListener("click", e => { const r = e.target.closest("[data-
 function renderTrades() {
   const C = closedTrades(), wins = C.filter(t => t.pnl > 0), losses = C.filter(t => t.pnl < 0);
   const gw = wins.reduce((a, t) => a + t.pnl, 0), gl = -losses.reduce((a, t) => a + t.pnl, 0), real = gw - gl;
-  const kpi = (icon, l, v, s) => `<div class="card kpi"><div class="l">${ic(icon)}${l}</div><div class="v num">${v}</div><div class="s">${s}</div></div>`;
-  $("tKpis").innerHTML =
-    kpi("wallet", "Realized P&amp;L" + tip("realized"), `<span class="${cls(real)}">${usd(real, 1)}</span>`, `${C.length} closed trade${C.length === 1 ? "" : "s"}`) +
-    kpi("target", "Win rate" + tip("winrate"), C.length ? Math.round(wins.length / C.length * 100) + "%" : "–", `${wins.length} win${wins.length === 1 ? "" : "s"} · ${losses.length} loss${losses.length === 1 ? "" : "es"}`) +
-    kpi("layers", "Profit factor" + tip("pf"), gl ? (gw / gl).toFixed(2) : wins.length ? "∞" : "–", "gross won ÷ gross lost") +
-    kpi("list", "Avg win / loss" + tip("avgwl"), `<span class="up">${wins.length ? usd(gw / wins.length) : "–"}</span><span class="muted" style="font-weight:500"> / </span><span class="down">${losses.length ? usd(-gl / losses.length) : "–"}</span>`, "per trade");
-  $("cumSub").textContent = C.length ? `${C.length} trades` : "";
+  $("cumHead").innerHTML = `<div class="pf-l">Realized P&amp;L${tip("realized")}</div>` + (!WAIT
+    ? `<div class="pf-v num ${cls(real)}">${usd(real, 1)}</div><div class="pf-d">Running total of ${C.length} closed trade${C.length === 1 ? "" : "s"}${tip("cum")}</div>`
+    : `<div class="pf-v">${sk(170, 40)}</div><div class="pf-d">${sk(190, 18)}</div>`);
+  $("tKpis").innerHTML = statStrip([
+    ["Win rate" + tip("winrate"), C.length ? Math.round(wins.length / C.length * 100) + "%" : "-", `${wins.length} win${wins.length === 1 ? "" : "s"}, ${losses.length} loss${losses.length === 1 ? "" : "es"}`],
+    ["Profit factor" + tip("pf"), gl ? (gw / gl).toFixed(2) : wins.length ? "∞" : "-", "gross won ÷ gross lost"],
+    ["Avg win / loss" + tip("avgwl"), `<span class="up">${wins.length ? usd(gw / wins.length) : "-"}</span><span class="muted" style="font-weight:400"> / </span><span class="down">${losses.length ? usd(-gl / losses.length) : "-"}</span>`, "per trade"]]);
 
   const coins = [...new Set((S.closed || []).map(t => t.coin))];
   $("tCoin").innerHTML = `<option value="">All coins</option>` + coins.map(c => `<option ${c === TCOIN ? "selected" : ""}>${esc(c)}</option>`).join("");
@@ -1177,7 +1217,7 @@ function renderTrades() {
     T.map(t => { const opening = /^open/i.test(t.reason || ""), mv = t.entry ? (t.exit - t.entry) / t.entry * 100 * (t.side || 1) : null;
       return `<tr class="click" data-coin="${esc(t.coin)}"><td class="hd"><div class="coin">${logo(t.coin)}<div class="nm"><b>${esc(t.coin)} ${sideTag(t.side)}</b></div></div></td>
         <td class="r num">${ml("Entry → Exit", "entryexit")}${t.entry ? px(t.entry) + " → " : ""}${px(t.exit)}</td>
-        <td class="r num hide-l ${cls(mv)}">${ml("Move", "move")}${mv == null ? "–" : pct(mv)}</td>
+        <td class="r num hide-l ${cls(mv)}">${ml("Move", "move")}${mv == null ? "-" : pct(mv)}</td>
         <td>${ml("Reason", "reason")}<span class="pill">${esc(t.reason)}</span></td>
         <td class="r num">${ml("Closed", "closed")}${when(t.at)}</td>
         <td class="r num ${opening ? "" : cls(t.pnl)}">${ml("P&amp;L", "tradepnl")}<b>${opening ? '<span class="muted">opened</span>' : usd(t.pnl, 1)}</b></td></tr>`; }).join("") + "</tbody></table>"
@@ -1210,11 +1250,11 @@ $("resetBtn").onclick = () => cmd("reset_paper", null, { title: "Reset the paper
 // settings, generated from config.json so every key stays editable
 // ======================================================================
 const LABELS = {
-  mode: ["Trading mode", "paper = simulated · testnet = fake money on exchange · live = REAL money"],
+  mode: ["Trading mode", "paper = simulated, testnet = fake money on exchange, live = REAL money"],
   coins: ["Coins", "Hyperliquid perp symbols, comma separated"], interval: ["Candle timeframe", "4h backtested best"],
   lookback_bars: ["History loaded", "Candles fetched per decision"], poll_seconds: ["Check every", "Seconds between loop runs"],
   paper_start_equity: ["Paper starting balance", "$ used when the paper account is reset"],
-  entry_threshold: ["Entry score", "|score| needed to open a trade (0–1)"], exit_threshold: ["Exit score", "Opposite score that closes a trade"],
+  entry_threshold: ["Entry score", "|score| needed to open a trade (0-1)"], exit_threshold: ["Exit score", "Opposite score that closes a trade"],
   allow_short: ["Allow shorts", "Bet on price falling"],
   ema_fast: ["Fast EMA", "Bars"], ema_slow: ["Slow EMA", "Bars"], rsi_len: ["RSI length", "Bars"], atr_len: ["ATR length", "Bars"], mom_len: ["Momentum lookback", "Bars"],
   trend: ["Trend"], momentum: ["Momentum"], mean_reversion: ["Mean reversion"], funding: ["Funding rate"], orderbook: ["Order book"], fear_greed: ["Fear & Greed"], news: ["News sentiment"],
@@ -1225,7 +1265,7 @@ const LABELS = {
   max_hold_hours: ["Max hold time", "Hours before a position is closed"],
   taker_pct: ["Taker fee", "% per fill"], slippage_pct: ["Slippage estimate", "% per fill"],
   "ai.enabled": ["Use AI signal", "Blend an LLM's long/short/flat view into the score"], provider: ["Provider"],
-  model: ["Models", "Comma separated; later ones are fallbacks"], weight: ["AI weight", "Share of the final score (0–1)"],
+  model: ["Models", "Comma separated; later ones are fallbacks"], weight: ["AI weight", "Share of the final score (0-1)"],
   flat_veto: ["Flat veto", "AI 'stay flat' probability that blocks entries"], min_confidence: ["Min confidence", "Ignore AI below this"], timeout_s: ["Timeout", "Seconds"],
   "news.enabled": ["Read news feeds"], feeds: ["RSS feeds", "One per line"], refresh_minutes: ["Refresh every", "Minutes"],
   risk_event_threshold: ["Crash-risk threshold", "Probability that blocks new entries"], flatten_on_risk_event: ["Close all on risk event"],
@@ -1295,8 +1335,9 @@ $("cfgForm").addEventListener("submit", async e => {
 // polling
 // ======================================================================
 async function refresh() {
-  try { S = await api("/api/status"); render(); }
-  catch (e) { $("sState").textContent = "Can't reach the bot"; $("sSub").textContent = e.message; $("sDot").className = $("mDot").className = "dot stale"; }
+  try { S = await api("/api/status"); WAIT = false; render(); }
+  catch (e) { if (WAIT) { WAIT = false; render(); }
+    $("sState").textContent = "Can't reach the bot"; $("sSub").textContent = e.message; $("sDot").className = $("mDot").className = "dot stale"; }
 }
 async function loadMarkets() {
   try {
