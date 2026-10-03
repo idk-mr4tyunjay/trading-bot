@@ -100,7 +100,7 @@ class HyperliquidBroker:
             szi = float(p["szi"])
             if szi:
                 out[p["coin"]] = {"side": 1 if szi > 0 else -1, "size": abs(szi), "entry": float(p["entryPx"]),
-                                  "opened": self.opened.get(p["coin"], time.time())}
+                                  "opened": self.opened.get(p["coin"])}  # None: opened outside the bot, time unknown
         return out
 
     def _cancel_all(self, coin):
@@ -136,7 +136,11 @@ class HyperliquidBroker:
         log.info("LIVE close %s (%s): %s", coin, reason, r)
 
     def closed(self):
-        return [{"coin": f["coin"], "side": 1 if f["side"] == "B" else -1, "exit": float(f["px"]), "pnl": float(f["closedPnl"]),
+        """Recent fills, oldest first. side = the position's direction ("Close Long" -> 1), pnl is net of the fill's fee."""
+        def side(f):
+            d = f["dir"].split(">")[0]
+            return 1 if "Long" in d else -1 if "Short" in d else (1 if f["side"] == "B" else -1)
+        return [{"coin": f["coin"], "side": side(f), "exit": float(f["px"]), "pnl": float(f["closedPnl"]) - float(f.get("fee") or 0),
                  "reason": f["dir"], "at": f["time"] / 1000} for f in self.info.user_fills(self.addr)[:30]][::-1]
 
     def check_stops(self, mids):

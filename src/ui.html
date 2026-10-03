@@ -818,7 +818,8 @@ function statusPill(coin, d, thr) {
   return `<span class="pill ${vc}">${vt}</span>`;
 }
 function noteText(n) {
-  const map = { "holding": "In a position, holding it", "no entry: score below entry_threshold": "Signal too weak to trade",
+  if (/^no entry: score .* below entry_threshold/.test(n || "")) return "Signal too weak to trade";
+  const map = { "holding": "In a position, holding it",
     "no entry: paused": "Would trade, but entries are paused", "no entry: daily loss limit hit": "Would trade, but today's loss limit is hit",
     "no entry: max_open_positions": "Would trade, but max positions is reached", "no entry: shorts disabled": "Short signal, but shorts are off",
     "no entry: news risk event": "Would trade, but news crash risk is high" };
@@ -875,6 +876,7 @@ function render() {
   const st = halted ? ["halt", "stop", "Stopped by kill switch", "Drawdown limit hit and positions were closed. Review before resuming."]
     : S.paused ? ["pause", "pause", "Paused", "No new trades. Open positions keep their stop and target."]
     : S.day_halt ? ["pause", "pause", "Done for today", "Daily loss limit hit. Entries resume at 00:00 UTC."]
+    : !S.t ? ["pause", "alert", "Connecting…", "Waiting for the bot's first update."]
     : stale ? ["halt", "alert", "Not responding", "The dashboard hasn't heard from the bot recently."]
     : ["run", "play", "Running", "Scanning for setups and managing open positions."];
   const bs = barSecs(S.interval), left = bs ? Math.ceil(now / bs) * bs - now : 0;
@@ -1172,8 +1174,9 @@ async function loadMarkets() {
 }
 applyTheme(store.get("theme", "system"));
 go(store.get("page", "overview"));
-loadConfig().catch(e => toast("Config: " + e.message, false));
-refresh().then(loadMarkets).then(() => PAGE === "markets" && loadCandles());
+// settings first, so thresholds and indicator lengths come from config.json, not the fallbacks above
+loadConfig().catch(e => toast("Config: " + e.message, false))
+  .then(refresh).then(loadMarkets).then(() => PAGE === "markets" && loadCandles());
 setInterval(() => { if (!document.hidden) refresh(); }, 10000);
 setInterval(() => { if (!document.hidden) loadMarkets(); }, 15000);
 setInterval(() => { if (!document.hidden && PAGE === "markets") loadCandles(true); }, 60000);

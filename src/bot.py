@@ -138,7 +138,7 @@ def run(cfg, name, cfg_path):
                     if pos["side"] * score <= -cfg["exit_threshold"]:
                         broker.close(coin, price, "signal flipped (%+.2f)" % score)
                         last[coin]["note"] = "closed: signal flipped"
-                    elif time.time() - pos["opened"] > rk["max_hold_hours"] * 3600:
+                    elif pos["opened"] and time.time() - pos["opened"] > rk["max_hold_hours"] * 3600:
                         broker.close(coin, price, "max hold time")
                         last[coin]["note"] = "closed: max hold time"
                     continue
@@ -152,7 +152,7 @@ def run(cfg, name, cfg_path):
                 elif risk_event:
                     why = "news risk event"
                 elif abs(score) < cfg["entry_threshold"]:
-                    why = "score below entry_threshold"
+                    why = "score %+.2f below entry_threshold %.2f" % (score, cfg["entry_threshold"])
                 elif score < 0 and not cfg["allow_short"]:
                     why = "shorts disabled"
                 elif jp and jp["flat"] >= cfg["ai"]["flat_veto"]:
@@ -160,7 +160,7 @@ def run(cfg, name, cfg_path):
                 elif len(broker.positions()) >= rk["max_open_positions"]:
                     why = "max_open_positions"
                 if why:
-                    log.debug("%s no entry: %s", coin, why)
+                    log.info("%s no entry: %s", coin, why)
                     last[coin]["note"] = "no entry: " + why
                     continue
                 szd = market.meta[coin]["szDecimals"]
