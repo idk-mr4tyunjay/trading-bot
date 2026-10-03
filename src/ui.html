@@ -85,6 +85,17 @@
   @keyframes ping { 0% { transform: scale(.6); opacity: .45; } 100% { transform: scale(1.6); opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .dot::after { animation: none; } }
 
+  /* "i" buttons: tap or hover for a plain-English explanation (#tipbox) */
+  .tip { position: relative; display: inline-grid; place-items: center; width: 15px; height: 15px; margin-left: 5px; padding: 0; flex: none;
+         border: 1px solid currentColor; border-radius: 50%; background: none; color: var(--muted); opacity: .7; cursor: help;
+         font: italic 700 9.5px/1 Georgia, "Times New Roman", serif; text-transform: none; letter-spacing: 0; vertical-align: 1px; }
+  .tip::after { content: ""; position: absolute; inset: -9px; }  /* bigger tap target than it looks */
+  .tip:hover, .tip[aria-expanded="true"] { opacity: 1; color: var(--accent); }
+  .card-h h2 .tip { margin-left: -2px; }
+  #tipbox { position: fixed; z-index: 40; width: max-content; max-width: min(300px, calc(100vw - 16px)); padding: 10px 12px; border-radius: 10px;
+            background: var(--text); color: var(--bg); font-size: 12.5px; line-height: 1.45; box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+  #tipbox b { display: block; font-size: 13px; margin-bottom: 3px; }
+
   .main { min-width: 0; }
   .topbar { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 14px; padding: 12px 28px;
             background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(14px) saturate(1.5); -webkit-backdrop-filter: blur(14px) saturate(1.5);
@@ -97,6 +108,7 @@
         white-space: nowrap; font-size: 12.5px; cursor: pointer; color: var(--text); font-family: inherit; }
   .tk:hover { border-color: var(--muted); }
   .tk b { font-weight: 650; } .tk span.num { color: var(--text2); }
+  .tk span.chg.up { color: var(--up); } .tk span.chg.down { color: var(--down); }
   .top-r { display: flex; align-items: center; gap: 8px; margin-left: auto; flex: none; }
   .mode { font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; padding: 5px 10px; border-radius: 8px; background: var(--panel2);
           border: 1px solid var(--line); color: var(--text2); }
@@ -150,7 +162,7 @@
   .kpi .l svg.i { width: 15px; height: 15px; }
   .kpi .v { font-size: 26px; font-weight: 750; letter-spacing: -.03em; margin: 6px 0 4px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .kpi .s { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  @media (max-width: 520px) { .kpis { gap: 10px; } .kpi { padding: 13px 14px; } .kpi .v { font-size: 20px; } .kpi .s { white-space: normal; } }
+  @media (max-width: 520px) { .kpis { gap: 10px; } .kpi { padding: 13px 14px; } .kpi .v { font-size: 20px; white-space: normal; } .kpi .s { white-space: normal; } }
   .delta { display: inline-flex; align-items: center; gap: 3px; font-weight: 650; font-size: 12.5px; padding: 1px 7px; border-radius: 6px; }
   .delta.up { background: var(--up-bg); } .delta.down { background: var(--down-bg); }
 
@@ -191,7 +203,7 @@
   /* tables (collapse to cards on phones) */
   table.t { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   .t th { text-align: left; font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em;
-          padding: 10px 14px; border-bottom: 1px solid var(--line2); white-space: nowrap; }
+          padding: 10px 14px; border-bottom: 1px solid var(--line2); }
   .t td { padding: 13px 14px; border-bottom: 1px solid var(--line2); vertical-align: middle; white-space: nowrap; }
   .t tr:last-child td { border-bottom: 0; }
   .t th:first-child, .t td:first-child { padding-left: 18px; } .t th:last-child, .t td:last-child { padding-right: 18px; }
@@ -200,21 +212,44 @@
   .t tbody tr.sel td { background: var(--accent-bg); }
   .t tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   .t .sub2 { display: block; font-size: 12px; color: var(--muted); }
+  .t .sub2.up { color: var(--up); } .t .sub2.down { color: var(--down); }
+  .ml { display: none; }  /* row labels, only shown when tables turn into cards on phones */
   @media (max-width: 1360px) { .t .hide-l { display: none; } }
-  @media (max-width: 760px) {
+  @media (max-width: 900px) {  /* tables become cards, same breakpoint as the phone/tablet navigation */
     .t thead { display: none; }
     .t, .t tbody, .t tr, .t td { display: block; width: 100%; }
     .t tr { padding: 12px 16px; border-bottom: 1px solid var(--line2); }
     .t tr:last-child { border-bottom: 0; }
     .t td { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 4px 10px; padding: 4px 0; border: 0; text-align: right; white-space: normal; }
     .t td::before { content: attr(data-l); color: var(--muted); font-size: 12.5px; text-align: left; flex: none; margin-right: auto; }
+    .t td:not([data-l])::before { content: none; }
+    .t td .ml { display: inline-flex; align-items: center; margin-right: auto; color: var(--muted); font-size: 12.5px; font-weight: 400; text-align: left; }
     .t td .sub2 { display: inline; }
-    .t td.hd { justify-content: flex-start; }
+    .t td.hd { justify-content: flex-start; text-align: left; }
     .t td.hd { padding-bottom: 8px; } .t td.hd::before { display: none; }
+    .t td:first-child, .t td:last-child { padding-left: 0; padding-right: 0; }
     .t td.hide-m { display: none; }
     .t tbody tr.sel td:first-child { box-shadow: none; }
     .t tbody tr.sel { box-shadow: inset 3px 0 0 var(--accent); background: var(--accent-bg); }
+  }  .card-b.flush { container-type: inline-size; }
+  @container (max-width: 760px) {  /* wide tables also become cards when their card is narrow, e.g. laptop two-column layout */
+    .t.wide thead { display: none; }
+    .t.wide, .t.wide tbody, .t.wide tr, .t.wide td { display: block; width: 100%; }
+    .t.wide tr { padding: 12px 16px; border-bottom: 1px solid var(--line2); }
+    .t.wide tr:last-child { border-bottom: 0; }
+    .t.wide td { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 4px 10px; padding: 4px 0; border: 0; text-align: right; white-space: normal; }
+    .t.wide td::before { content: attr(data-l); color: var(--muted); font-size: 12.5px; text-align: left; flex: none; margin-right: auto; }
+    .t.wide td:not([data-l])::before { content: none; }
+    .t.wide td .ml { display: inline-flex; align-items: center; margin-right: auto; color: var(--muted); font-size: 12.5px; font-weight: 400; text-align: left; }
+    .t.wide td .sub2 { display: inline; }
+    .t.wide td.hd { justify-content: flex-start; text-align: left; }
+    .t.wide td.hd { padding-bottom: 8px; } .t.wide td.hd::before { display: none; }
+    .t.wide td:first-child, .t.wide td:last-child { padding-left: 0; padding-right: 0; }
+    .t.wide td.hide-m { display: none; }
+    .t.wide tbody tr.sel td:first-child { box-shadow: none; }
+    .t.wide tbody tr.sel { box-shadow: inset 3px 0 0 var(--accent); background: var(--accent-bg); }
   }
+
 
   /* meters + bars */
   .meter { padding: 12px 0; border-top: 1px solid var(--line2); }
@@ -423,7 +458,7 @@
       <div class="mlogo"><svg><use href="#brand"/></svg><span class="dot stale" id="mDot"></span></div>
       <h1 id="title">Overview</h1>
       <div class="ticker" id="ticker"></div>
-      <div class="top-r"><span class="mode" id="mode">–</span></div>
+      <div class="top-r"><span class="mode" id="mode">–</span><button type="button" class="tip" data-tip="mode">i</button></div>
     </header>
 
     <div class="content">
@@ -435,27 +470,27 @@
         <div class="grid g-main">
           <div class="col">
             <div class="card">
-              <div class="card-h"><h2>Equity</h2>
+              <div class="card-h"><h2>Equity<button type="button" class="tip" data-tip="eqchart">i</button></h2>
                 <div class="seg" id="ranges"><button data-r="86400">24H</button><button data-r="604800">7D</button><button data-r="2592000">30D</button><button data-r="0">ALL</button></div></div>
               <div class="card-b" style="padding-top:8px"><div class="chartbox" id="eqChart"></div></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2>Open positions</h2><span class="sub" id="posSub"></span></div>
+              <div class="card-h"><h2>Open positions<button type="button" class="tip" data-tip="positions">i</button></h2><span class="sub" id="posSub"></span></div>
               <div class="card-b flush" id="positions"></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2>Signals</h2><button class="btn sm" data-go="markets">Open markets</button></div>
+              <div class="card-h"><h2>Signals<button type="button" class="tip" data-tip="signals">i</button></h2><button class="btn sm" data-go="markets">Open markets</button></div>
               <div class="card-b flush" id="sigMini"></div>
             </div>
           </div>
           <div class="col">
             <div class="card"><div class="card-b" id="statusCard"></div></div>
             <div class="card">
-              <div class="card-h"><h2><svg class="i"><use href="#i-shield"/></svg>Safety limits</h2></div>
+              <div class="card-h"><h2><svg class="i"><use href="#i-shield"/></svg>Safety limits<button type="button" class="tip" data-tip="safety">i</button></h2></div>
               <div class="card-b" id="meters"></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2>Recent trades</h2><button class="btn sm" data-go="trades">View all</button></div>
+              <div class="card-h"><h2>Recent trades<button type="button" class="tip" data-tip="recent">i</button></h2><button class="btn sm" data-go="trades">View all</button></div>
               <div class="card-b flush" id="recent"></div>
             </div>
           </div>
@@ -465,7 +500,7 @@
       <!-- ===================== MARKETS ===================== -->
       <section data-page="markets" hidden>
         <div class="card" style="margin-bottom:16px">
-          <div class="card-h"><h2>Watchlist</h2><span class="sub" id="mkSub">Live from Hyperliquid</span></div>
+          <div class="card-h"><h2>Watchlist<button type="button" class="tip" data-tip="watchlist">i</button></h2><span class="sub" id="mkSub">Live from Hyperliquid</span></div>
           <div class="card-b flush" id="mkTable"></div>
         </div>
         <div class="grid g-main">
@@ -476,21 +511,21 @@
                 <div class="legend" id="cLegend" style="margin-top:10px"></div></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2><svg class="i"><use href="#i-gauge"/></svg>Market mood</h2><span class="sub">feeds into every coin's score</span></div>
+              <div class="card-h"><h2><svg class="i"><use href="#i-gauge"/></svg>Market mood<button type="button" class="tip" data-tip="mood">i</button></h2><span class="sub">feeds into every coin's score</span></div>
               <div class="card-b" id="mood"></div>
             </div>
           </div>
           <div class="col">
             <div class="card">
-              <div class="card-h"><h2><svg class="i"><use href="#i-target"/></svg>Bot signal</h2><span class="sub" id="sigWhen"></span></div>
+              <div class="card-h"><h2><svg class="i"><use href="#i-target"/></svg>Bot signal<button type="button" class="tip" data-tip="botsignal">i</button></h2><span class="sub" id="sigWhen"></span></div>
               <div class="card-b" id="dSignal"></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2><svg class="i"><use href="#i-pie"/></svg>What drives the score</h2></div>
+              <div class="card-h"><h2><svg class="i"><use href="#i-pie"/></svg>What drives the score<button type="button" class="tip" data-tip="factors">i</button></h2></div>
               <div class="card-b" id="dFactors"></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2><svg class="i"><use href="#i-news"/></svg>Headlines</h2></div>
+              <div class="card-h"><h2><svg class="i"><use href="#i-news"/></svg>Headlines<button type="button" class="tip" data-tip="headlines">i</button></h2></div>
               <div class="card-b" id="news"></div>
             </div>
           </div>
@@ -503,11 +538,11 @@
         <div class="grid g-main">
           <div class="col">
             <div class="card">
-              <div class="card-h"><h2>Cumulative realized P&amp;L</h2><span class="sub" id="cumSub"></span></div>
+              <div class="card-h"><h2>Cumulative realized P&amp;L<button type="button" class="tip" data-tip="cum">i</button></h2><span class="sub" id="cumSub"></span></div>
               <div class="card-b" style="padding-top:8px"><div class="chartbox" id="pnlChart"></div></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2>Trade history</h2>
+              <div class="card-h"><h2>Trade history<button type="button" class="tip" data-tip="history">i</button></h2>
                 <div class="filters"><div class="seg" id="tFilter"><button data-f="all" aria-pressed="true">All</button><button data-f="win" aria-pressed="false">Wins</button><button data-f="loss" aria-pressed="false">Losses</button></div>
                   <select class="sel" id="tCoin" aria-label="Filter by coin"><option value="">All coins</option></select></div></div>
               <div class="card-b flush" id="trades"></div>
@@ -515,11 +550,11 @@
           </div>
           <div class="col">
             <div class="card">
-              <div class="card-h"><h2>By coin</h2></div>
+              <div class="card-h"><h2>By coin<button type="button" class="tip" data-tip="bycoin">i</button></h2></div>
               <div class="card-b flush" id="byCoin"></div>
             </div>
             <div class="card">
-              <div class="card-h"><h2><svg class="i"><use href="#i-term"/></svg>Activity log</h2><span class="sub">last 40 lines</span></div>
+              <div class="card-h"><h2><svg class="i"><use href="#i-term"/></svg>Activity log<button type="button" class="tip" data-tip="log">i</button></h2><span class="sub">last 40 lines</span></div>
               <pre class="log" id="log">–</pre>
             </div>
           </div>
@@ -552,6 +587,7 @@
 <nav class="bnav" id="bnav"></nav>
 <dialog id="dlg"><form method="dialog" class="dlg" id="dlgForm"></form></dialog>
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="tipbox" role="tooltip" hidden></div>
 
 <script>
 "use strict";
@@ -579,6 +615,105 @@ const delta = (v, txt) => `<span class="delta ${cls(v)} num">${v > 0 ? "▲" : v
 const store = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 const barSecs = iv => { const m = /^(\d+)([mhdw])$/.exec(iv || ""); return m ? m[1] * { m: 60, h: 3600, d: 86400, w: 604800 }[m[2]] : 0; };
 const sideTag = (s, short) => s ? `<span class="tag ${s > 0 ? "long" : "short"}">${s > 0 ? (short ? "L" : "LONG") : (short ? "S" : "SHORT")}</span>` : "";
+
+// ---------- glossary: every "i" button explains one value in plain English ----------
+const GLOSS = {
+  mode: ["Mode", "PAPER: practice with simulated money. TESTNET: Hyperliquid's practice exchange. LIVE: real money. The time (e.g. 4H) is the candle size the bot trades on."],
+  equity: ["Account equity", "What the account is worth right now: cash plus the profit or loss of open positions. In paper mode this is simulated money."],
+  today: ["Today's P&L", "Profit and loss since 00:00 UTC, including open positions. P&L means profit and loss; a minus sign means a loss."],
+  upnl: ["Unrealized P&L", "Profit or loss on positions that are still open, at the current price. It isn't locked in until the position closes."],
+  winrate: ["Win rate", "Share of closed trades that made money. This strategy is built to win fewer than half its trades but make more on winners than it loses on losers (by default the target is twice as far as the stop)."],
+  eqchart: ["Equity chart", "Account value over time. A point is saved every 30 minutes; the line is green if the period ended higher and red if lower."],
+  positions: ["Open positions", "Trades the bot is in right now. LONG profits if the price rises, SHORT profits if it falls. Each one has a stop and a target that close it automatically."],
+  size: ["Size", "How many coins the position holds. The dollar value under the coin name (notional) is size × price; with leverage it can be bigger than your account."],
+  entrymark: ["Entry / Mark", "Entry is the price the position was opened at. Mark (below it) is the current price used to value it."],
+  stoptarget: ["Stop → Target", "The stop closes the trade automatically to cap the loss; the target closes it to take profit. The dot shows where the price is now, the line where it was entered."],
+  pospnl: ["P&L", "Profit or loss on this position at the current price. The % is how far the price has moved for you (+) or against you (−)."],
+  held: ["Held", "How long the position has been open. The bot closes any position held longer than the max hold time (240 hours by default). Shows – if the position was opened outside the bot."],
+  signals: ["Signals", "Each coin's latest bot score and what the bot thinks of it. Tap a row to open its chart."],
+  perp: ["Market", "These are perpetual futures (perps): contracts that track a coin's price with no expiry. You can bet on the price rising (long) or falling (short), with leverage. The × is the maximum leverage the exchange allows."],
+  price: ["Price", "The current mid price on Hyperliquid: halfway between the best buy and sell offers. Refreshes every 15 seconds."],
+  chg24: ["24h change", "How much the price has moved over the last 24 hours. Red means it's lower than a day ago."],
+  funding: ["Funding (APR)", "Perps charge a small fee every hour between longs and shorts to keep the price close to the real coin's price. Positive: longs pay shorts. Negative: shorts pay longs. Shown as a yearly rate."],
+  oi: ["Open interest", "The total dollar value of all open positions in this market. Higher means more money is involved."],
+  vol: ["24h volume", "Dollar value traded in the last 24 hours. Higher volume usually means smoother prices and less slippage."],
+  score: ["Bot score", "The bot's combined signal, from −1 (strong short) to +1 (strong long). It only opens a trade when the score goes beyond the entry level (±0.40 by default), and it only checks when a candle closes."],
+  status: ["Status", "What the bot makes of this coin: Neutral (no signal), Leaning long/short (getting close), Long/Short setup (strong enough to trade), or Holding (already in a position)."],
+  nextdec: ["Next decision", "Time until the current candle closes. The bot only decides whether to open or close a trade at each close. Stops and targets are still checked every minute."],
+  heartbeat: ["Heartbeat", "When the bot last reported in. It runs every minute; if this gets old, the bot or the server may be down."],
+  entrytrig: ["Entry trigger", "A coin's score has to go past this, up for a long or down for a short, before the bot opens a trade."],
+  riskper: ["Risk per trade", "How much of the account is lost if a trade hits its stop. The bot sizes every trade so this stays the same."],
+  safety: ["Safety limits", "Automatic brakes that protect the account. They can't be skipped by the strategy."],
+  dd: ["Drawdown from peak", "How far the account has fallen from its highest value. At the limit, the kill switch closes every position and pauses the bot until you resume it."],
+  dayloss: ["Today's loss", "Loss since 00:00 UTC. At the limit, the bot opens no new trades until the next day. Open positions keep their stops and targets."],
+  maxpos: ["Open positions", "How many trades are open, out of the most allowed at once. It also shows the size and leverage caps for each trade."],
+  recent: ["Recent trades", "The last closed trades and their profit or loss after fees."],
+  watchlist: ["Watchlist", "The coins the bot trades, with live market data. Tap a row to see its chart and why the bot scored it that way."],
+  prev: ["Price 24h ago", "The price exactly one day ago, which the 24h change is measured from."],
+  fundh: ["Funding / hour", "This hour's funding rate. Positive: longs pay shorts this % of their position every hour. Negative: shorts pay longs."],
+  chart: ["Price chart", "Each candle covers one period (4 hours by default): the body runs from the open to the close price, the thin wicks show the high and low. Green closed higher, red lower. The two lines are moving averages (EMA): fast above slow is an uptrend."],
+  botsignal: ["Bot signal", "The bot's latest score for this coin and why it did or didn't trade."],
+  rsi: ["RSI", "Relative Strength Index, 0 to 100. Above 70 the price has risen fast and may be overstretched (overbought); below 30 it has fallen fast (oversold)."],
+  aiop: ["AI opinion", "An AI model's chances for long, flat (no trade) and short. They're blended into the score, and a high flat chance can block a trade."],
+  factors: ["What drives the score", "Each factor reads the market from −1 (bearish) to +1 (bullish). The score is their weighted average; the weight is how much each one counts. Weights are in Settings."],
+  f_trend: ["Trend", "Compares a fast and a slow moving average. Fast above slow (+) means prices are trending up."],
+  f_momentum: ["Momentum", "How far the price moved over the last 12 candles compared with its normal swings. A strong rise reads +."],
+  f_mean_reversion: ["Mean reversion", "Uses RSI. After a sharp rise it leans short, expecting a pullback, and after a sharp fall it leans long."],
+  f_funding: ["Funding", "Contrarian: when longs are paying high funding the trade is crowded, so it leans short (and the other way round)."],
+  f_orderbook: ["Order book", "Compares buy orders with sell orders near the current price. More buyers (+) leans long."],
+  f_fear_greed: ["Fear & Greed", "Contrarian: extreme greed leans short, extreme fear leans long."],
+  f_news: ["News", "An AI reads recent headlines and scores the mood. Needs the AI signal turned on in Settings."],
+  mood: ["Market mood", "Market-wide readings that feed into every coin's score."],
+  fng: ["Fear & Greed index", "A daily 0–100 gauge of crypto market mood from alternative.me. The bot uses it the opposite way: fear nudges it toward buying, greed toward selling."],
+  newssent: ["News sentiment", "An AI's read of recent headlines, from −1 (negative) to +1 (positive). Only works when the AI signal is on."],
+  crash: ["Crash-risk probability", "An AI's estimate that the headlines point to a sharp drop. Above the threshold, the bot stops opening trades."],
+  aiuse: ["AI usage", "How many AI calls the bot has made since it started, and what they cost."],
+  headlines: ["Headlines", "The latest crypto headlines from the news feeds in Settings. The AI reads them only when it's turned on."],
+  realized: ["Realized P&L", "Total profit or loss from closed trades, after fees. Unlike unrealized P&L, this is locked in."],
+  pf: ["Profit factor", "Total won ÷ total lost. Above 1 means the bot made more than it lost: 1.30 means $1.30 won for every $1 lost."],
+  avgwl: ["Avg win / loss", "The average profit of a winning trade and the average loss of a losing trade. With a low win rate, wins need to be bigger than losses."],
+  cum: ["Cumulative realized P&L", "Running total of profit and loss, adding each closed trade in order."],
+  history: ["Trade history", "Every trade the bot closed (in live mode, every fill). Filter by wins, losses or coin."],
+  entryexit: ["Entry → Exit", "The price the trade was opened at and the price it was closed at."],
+  move: ["Move", "Price change from entry to exit in the trade's direction. Minus means the price went against it."],
+  reason: ["Reason", "Why the trade closed: stop loss, take profit, signal flipped (the score turned against it), max hold time, or closed by you."],
+  closed: ["Closed", "When the trade closed, in your local time."],
+  tradepnl: ["P&L", "Profit or loss of the trade after fees."],
+  bycoin: ["By coin", "Closed trades grouped by coin: how many, how often they won, and the total profit or loss."],
+  ntrades: ["Trades", "Number of closed trades for this coin."],
+  winpct: ["Win %", "Share of this coin's trades that made money."],
+  coinpnl: ["P&L", "Total profit or loss from this coin's trades, after fees."],
+  log: ["Activity log", "The bot's last 40 log lines, newest at the bottom. Green lines are trades, yellow are warnings, red are errors."],
+};
+const tip = k => GLOSS[k] ? `<button type="button" class="tip" data-tip="${k}" aria-label="What is ${esc(GLOSS[k][0])}?">i</button>` : "";
+const ml = (l, k) => `<span class="ml">${l}${tip(k)}</span>`;  // a table cell's label when the table becomes cards on phones
+let tipKey = null, tipPinned = false;
+function showTip(btn, pin) {
+  const g = GLOSS[btn.dataset.tip], box = $("tipbox"); if (!g) return;
+  box.innerHTML = `<b>${esc(g[0])}</b>${esc(g[1])}`; box.hidden = false;
+  const r = btn.getBoundingClientRect(), w = box.offsetWidth, h = box.offsetHeight;
+  box.style.left = clamp(r.left + r.width / 2 - w / 2, 8, innerWidth - w - 8) + "px";
+  box.style.top = (r.bottom + 8 + h > innerHeight - 8 ? Math.max(8, r.top - h - 8) : r.bottom + 8) + "px";
+  document.querySelectorAll('.tip[aria-expanded="true"]').forEach(b => b.setAttribute("aria-expanded", "false"));
+  btn.setAttribute("aria-expanded", "true"); tipKey = btn.dataset.tip; tipPinned = pin;
+}
+function hideTip() {
+  $("tipbox").hidden = true; tipKey = null; tipPinned = false;
+  document.querySelectorAll('.tip[aria-expanded="true"]').forEach(b => b.setAttribute("aria-expanded", "false"));
+}
+// capture phase, so tapping an "i" inside a clickable row explains it instead of opening the row
+document.addEventListener("click", e => {
+  const b = e.target.closest(".tip");
+  if (b) { e.preventDefault(); e.stopPropagation(); return tipKey === b.dataset.tip && tipPinned ? hideTip() : showTip(b, true); }
+  if (tipKey && !e.target.closest("#tipbox")) hideTip();
+}, true);
+document.addEventListener("pointerover", e => { const b = e.target.closest(".tip"); if (b && e.pointerType === "mouse" && !tipPinned) showTip(b, false); });
+document.addEventListener("pointerout", e => { const b = e.target.closest(".tip");
+  if (b && e.pointerType === "mouse" && !tipPinned && !b.contains(e.relatedTarget)) hideTip(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && tipKey) hideTip(); });
+addEventListener("scroll", () => tipKey && hideTip(), { capture: true, passive: true });
+addEventListener("resize", () => tipKey && hideTip());
+document.querySelectorAll(".tip[data-tip]").forEach(b => GLOSS[b.dataset.tip] && b.setAttribute("aria-label", `What is ${GLOSS[b.dataset.tip][0]}?`));
 
 let S = {}, CFG = null, MK = {}, MK_ERR = null, PAGE = "overview";
 let RANGE = Number(store.get("eqRange", 604800)), SEL = store.get("coin", ""), TF = "all", TCOIN = "";
@@ -787,7 +922,7 @@ function drawCandles() {
 
   $("cLegend").innerHTML = `<span><i style="background:${cF}"></i>EMA ${ind.ema_fast}</span><span><i style="background:${cS}"></i>EMA ${ind.ema_slow}</span>` +
     (pos ? `<span><i style="background:${dn}"></i>Stop</span><span><i style="background:${up}"></i>Target</span>` : "") +
-    `<span>● closed trade</span><span style="margin-left:auto">${esc(S.interval || "")} candles · Hyperliquid</span>`;
+    `<span>● closed trade</span><span style="margin-left:auto">${esc(S.interval || "")} candles · Hyperliquid${tip("chart")}</span>`;
 }
 function renderCharts() {
   if (PAGE === "overview") drawEquity();
@@ -867,10 +1002,10 @@ function render() {
   const upnl = P.reduce((a, p) => a + p.side * (markOf(p) - p.entry) * p.size, 0), real = C.reduce((a, t) => a + t.pnl, 0), wins = C.filter(t => t.pnl > 0);
   const kpi = (icon, l, v, s) => `<div class="card kpi"><div class="l">${ic(icon)}${l}</div><div class="v num">${v}</div><div class="s">${s}</div></div>`;
   $("kpis").innerHTML =
-    kpi("wallet", "Account equity", usd(S.equity), start ? `${delta(S.equity - start, pct((S.equity - start) / start * 100))} ${S.mode === "paper" ? "since start" : "since tracking"}` : "&nbsp;") +
-    kpi("cal", "Today's P&amp;L", `<span class="${cls(dayD)}">${usd(dayD, 1)}</span>`, dayD != null ? `${delta(dayD, pct(dayD / S.day_start * 100))} since 00:00 UTC` : "&nbsp;") +
-    kpi("layers", "Unrealized P&amp;L", `<span class="${cls(upnl)}">${usd(upnl, 1)}</span>`, `${P.length} open position${P.length === 1 ? "" : "s"}`) +
-    kpi("target", "Win rate", C.length ? Math.round(wins.length / C.length * 100) + "%" : "–", C.length ? `${wins.length}W · ${C.length - wins.length}L · ${usd(real, 1)} realized` : "no closed trades yet");
+    kpi("wallet", "Account equity" + tip("equity"), usd(S.equity), start ? `${delta(S.equity - start, pct((S.equity - start) / start * 100))} ${S.mode === "paper" ? "since start" : "since tracking"}` : "&nbsp;") +
+    kpi("cal", "Today's P&amp;L" + tip("today"), `<span class="${cls(dayD)}">${usd(dayD, 1)}</span>`, dayD != null ? `${delta(dayD, pct(dayD / S.day_start * 100))} since 00:00 UTC` : "&nbsp;") +
+    kpi("layers", "Unrealized P&amp;L" + tip("upnl"), `<span class="${cls(upnl)}">${usd(upnl, 1)}</span>`, `${P.length} open position${P.length === 1 ? "" : "s"}`) +
+    kpi("target", "Win rate" + tip("winrate"), C.length ? Math.round(wins.length / C.length * 100) + "%" : "–", C.length ? `${wins.length}W · ${C.length - wins.length}L · <span class="${cls(real)}">${usd(real, 1)}</span> realized` : "no closed trades yet");
 
   // ---- status card ----
   const st = halted ? ["halt", "stop", "Stopped by kill switch", "Drawdown limit hit and positions were closed. Review before resuming."]
@@ -882,10 +1017,10 @@ function render() {
   const bs = barSecs(S.interval), left = bs ? Math.ceil(now / bs) * bs - now : 0;
   $("statusCard").innerHTML = `<div class="status ${st[0]}"><div class="ic">${ic(st[1])}</div><div><b>${st[2]}</b><span>${esc(st[3])}</span></div></div>
     <div class="facts">
-      <div><small>Next decision</small>${bs ? "in " + dur(left) : "–"}${bs ? `<div class="barprog"><i style="width:${(1 - left / bs) * 100}%"></i></div>` : ""}</div>
-      <div><small>Heartbeat</small>${S.t ? ago(S.t) : "–"}</div>
-      <div><small>Entry trigger</small>score ±${thr}</div>
-      <div><small>Risk per trade</small>${CFG ? CFG.risk.risk_per_trade_pct + "% of equity" : "–"}</div>
+      <div><small>Next decision${tip("nextdec")}</small>${bs ? "in " + dur(left) : "–"}${bs ? `<div class="barprog"><i style="width:${(1 - left / bs) * 100}%"></i></div>` : ""}</div>
+      <div><small>Heartbeat${tip("heartbeat")}</small>${S.t ? ago(S.t) : "–"}</div>
+      <div><small>Entry trigger${tip("entrytrig")}</small>score ±${thr}</div>
+      <div><small>Risk per trade${tip("riskper")}</small>${CFG ? CFG.risk.risk_per_trade_pct + "% of equity" : "–"}</div>
     </div>
     <div class="acts">
       <button class="btn ${S.paused ? "primary" : ""}" id="pauseBtn">${ic(S.paused ? "play" : "pause")}${S.paused ? "Resume" : "Pause"}</button>
@@ -900,43 +1035,43 @@ function render() {
       return `<div class="meter"><div class="row"><span>${t}</span><span class="num">${val}</span></div>
         <div class="track"><i class="${info ? "info" : f > .85 ? "bad" : f > .6 ? "warn" : ""}" style="width:${used ? Math.max(f * 100, 2) : 0}%"></i></div><div class="hint">${hint}</div></div>`; };
     $("meters").innerHTML =
-      m("Drawdown from peak", dd, rk.max_drawdown_pct, `<b>${dd.toFixed(1)}%</b> <span class="muted">of ${rk.max_drawdown_pct}%</span>`, `Peak ${usd(S.peak)}. At the limit the bot closes everything and stops.`) +
-      m("Today's loss", dl, rk.daily_loss_limit_pct, `<b>${dl.toFixed(1)}%</b> <span class="muted">of ${rk.daily_loss_limit_pct}%</span>`, "At the limit, no new trades until 00:00 UTC.") +
-      m("Open positions", P.length, rk.max_open_positions, `<b>${P.length}</b> <span class="muted">of ${rk.max_open_positions}</span>`, `Max ${usd(rk.max_position_usd)} each, up to ${rk.max_leverage}× leverage.`, true);
+      m("Drawdown from peak" + tip("dd"), dd, rk.max_drawdown_pct, `<b>${dd.toFixed(1)}%</b> <span class="muted">of ${rk.max_drawdown_pct}%</span>`, `Peak ${usd(S.peak)}. At the limit the bot closes everything and stops.`) +
+      m("Today's loss" + tip("dayloss"), dl, rk.daily_loss_limit_pct, `<b>${dl.toFixed(1)}%</b> <span class="muted">of ${rk.daily_loss_limit_pct}%</span>`, "At the limit, no new trades until 00:00 UTC.") +
+      m("Open positions" + tip("maxpos"), P.length, rk.max_open_positions, `<b>${P.length}</b> <span class="muted">of ${rk.max_open_positions}</span>`, `Max ${usd(rk.max_position_usd)} each, up to ${rk.max_leverage}× leverage.`, true);
   }
 
   // ---- positions ----
   $("posSub").innerHTML = P.length ? `${P.length} open · <span class="${cls(upnl)}">${usd(upnl, 1)}</span>` : "";
-  $("positions").innerHTML = P.length ? `<table class="t"><thead><tr><th>Market</th><th class="r">Size</th><th class="r">Entry / Mark</th><th>Stop → Target</th><th class="r">P&amp;L</th><th class="r">Held</th><th></th></tr></thead><tbody>` +
+  $("positions").innerHTML = P.length ? `<table class="t wide"><thead><tr><th>Market${tip("perp")}</th><th class="r">Size${tip("size")}</th><th class="r">Entry / Mark${tip("entrymark")}</th><th>Stop → Target${tip("stoptarget")}</th><th class="r">P&amp;L${tip("pospnl")}</th><th class="r">Held${tip("held")}</th><th></th></tr></thead><tbody>` +
     P.map(p => {
       const long = p.side > 0, mark = markOf(p), pnl = p.side * (mark - p.entry) * p.size, mv = (mark - p.entry) / p.entry * 100 * p.side;
       const span = p.tp - p.sl, at = span ? clamp((mark - p.sl) / span, 0, 1) * 100 : 50, en = span ? clamp((p.entry - p.sl) / span, 0, 1) * 100 : 50;
       return `<tr class="click" data-coin="${esc(p.coin)}">
         <td class="hd"><div class="coin">${logo(p.coin)}<div class="nm"><b>${esc(p.coin)} ${sideTag(p.side)}</b><small>${usd(p.size * mark)} notional</small></div></div></td>
-        <td class="r num" data-l="Size">${p.size} ${esc(p.coin)}</td>
-        <td class="r num" data-l="Entry / Mark">${px(p.entry)}<span class="sub2">${px(mark)}</span></td>
-        <td data-l="Stop → Target">${p.sl && p.tp ? `<div><div class="rng"><span class="en" style="left:${en}%"></span><span class="mk" style="left:${at}%"></span></div>
+        <td class="r num">${ml("Size", "size")}${p.size} ${esc(p.coin)}</td>
+        <td class="r num">${ml("Entry / Mark", "entrymark")}${px(p.entry)}<span class="sub2">${px(mark)}</span></td>
+        <td>${ml("Stop → Target", "stoptarget")}${p.sl && p.tp ? `<div><div class="rng"><span class="en" style="left:${en}%"></span><span class="mk" style="left:${at}%"></span></div>
           <div class="rng-l num"><span>${px(p.sl)}</span><span>${px(p.tp)}</span></div></div>` : "–"}</td>
-        <td class="r num ${cls(pnl)}" data-l="P&amp;L"><b>${usd(pnl, 1)}</b><span class="sub2 ${cls(mv)}">${pct(mv)}</span></td>
-        <td class="r num" data-l="Held">${p.opened ? dur(now - p.opened) : "–"}</td>
-        <td class="r" data-l=""><button class="btn sm danger" data-close="${esc(p.coin)}">Close</button></td></tr>`;
+        <td class="r num ${cls(pnl)}">${ml("P&amp;L", "pospnl")}<b>${usd(pnl, 1)}</b><span class="sub2 ${cls(mv)}">${pct(mv)}</span></td>
+        <td class="r num">${ml("Held", "held")}${p.opened ? dur(now - p.opened) : "–"}</td>
+        <td class="r"><button class="btn sm danger" data-close="${esc(p.coin)}">Close</button></td></tr>`;
     }).join("") + "</tbody></table>"
     : `<div class="empty">${ic("inbox")}<b>No open positions</b>The bot opens one when a signal reaches ±${thr}.</div>`;
 
   // ---- signals summary ----
   const D = S.decisions || {}, W = watch();
-  $("sigMini").innerHTML = W.length ? `<table class="t"><thead><tr><th>Market</th><th class="r">Price</th><th>Bot score</th><th class="r">Status</th></tr></thead><tbody>` +
+  $("sigMini").innerHTML = W.length ? `<table class="t"><thead><tr><th>Market${tip("perp")}</th><th class="r">Price${tip("price")}</th><th>Bot score${tip("score")}</th><th class="r">Status${tip("status")}</th></tr></thead><tbody>` +
     W.map(c => { const d = D[c], m = MK[c], ch = chg(m);
       return `<tr class="click" data-coin="${esc(c)}"><td class="hd"><div class="coin">${logo(c)}<div class="nm"><b>${esc(c)}</b><small>${ch != null ? `<span class="${cls(ch)}">${pct(ch)}</span> 24h` : "&nbsp;"}</small></div></div></td>
-        <td class="r num" data-l="Price">${px(m ? m.px : d && d.price)}</td>
-        <td data-l="Bot score">${scoreCell(d, thr)}</td>
-        <td class="r" data-l="Status">${statusPill(c, d, thr)}</td></tr>`; }).join("") + "</tbody></table>"
+        <td class="r num">${ml("Price", "price")}${px(m ? m.px : d && d.price)}</td>
+        <td>${ml("Bot score", "score")}${scoreCell(d, thr)}</td>
+        <td class="r">${ml("Status", "status")}${statusPill(c, d, thr)}</td></tr>`; }).join("") + "</tbody></table>"
     : `<div class="empty">Waiting for the first closed candle.</div>`;
 
   // ---- recent trades ----
   $("recent").innerHTML = C.length ? `<table class="t"><tbody>` + C.slice(0, 5).map(t => `<tr class="click" data-coin="${esc(t.coin)}">
       <td class="hd"><div class="coin">${logo(t.coin, "sm")}<div class="nm"><b style="font-size:13px">${esc(t.coin)} ${sideTag(t.side, 1)}</b><small>${esc(t.reason)} · ${ago(t.at)}</small></div></div></td>
-      <td class="r num ${cls(t.pnl)}" data-l="P&amp;L"><b>${usd(t.pnl, 1)}</b></td></tr>`).join("") + "</tbody></table>"
+      <td class="r num ${cls(t.pnl)}">${ml("P&amp;L", "tradepnl")}<b>${usd(t.pnl, 1)}</b></td></tr>`).join("") + "</tbody></table>"
     : `<div class="empty">${ic("inbox")}<b>No trades yet</b>Closed trades show up here.</div>`;
 
   renderMarkets(); renderTrades();
@@ -965,17 +1100,17 @@ function renderMarkets() {
   const W = watch(), D = S.decisions || {}, P = S.positions || [], thr = CFG ? CFG.entry_threshold : 0.4;
   if (!SEL || !W.includes(SEL)) SEL = W[0] || "";
   $("mkSub").textContent = MK_ERR ? "Market data unavailable: " + MK_ERR : "Live from Hyperliquid · select a row to chart it";
-  $("mkTable").innerHTML = W.length ? `<table class="t"><thead><tr><th>Market</th><th class="r">Price</th><th class="r">24h</th><th class="r">Funding (APR)</th><th class="r hide-l">Open interest</th><th class="r hide-l">24h volume</th><th>Bot score</th><th class="r">Status</th></tr></thead><tbody>` +
+  $("mkTable").innerHTML = W.length ? `<table class="t wide"><thead><tr><th>Market${tip("perp")}</th><th class="r">Price${tip("price")}</th><th class="r">24h${tip("chg24")}</th><th class="r">Funding (APR)${tip("funding")}</th><th class="r hide-l">Open interest${tip("oi")}</th><th class="r hide-l">24h volume${tip("vol")}</th><th>Bot score${tip("score")}</th><th class="r">Status${tip("status")}</th></tr></thead><tbody>` +
     W.map(c => { const m = MK[c], d = D[c], ch = chg(m), apr = m ? m.funding * 24 * 365 * 100 : null;
       return `<tr class="click ${c === SEL ? "sel" : ""}" data-sel="${esc(c)}">
         <td class="hd"><div class="coin">${logo(c)}<div class="nm"><b>${esc(c)}-USD</b><small>${m ? "Perp · up to " + m.maxLev + "×" : "Perp"}</small></div></div></td>
-        <td class="r num" data-l="Price"><b>${px(m ? m.px : d && d.price)}</b></td>
-        <td class="r num ${cls(ch)}" data-l="24h">${pct(ch)}</td>
-        <td class="r num ${cls(apr)}" data-l="Funding (APR)">${apr == null ? "–" : pct(apr, 1)}</td>
-        <td class="r num hide-m hide-l" data-l="Open interest">${m ? compact(m.oi) : "–"}</td>
-        <td class="r num hide-m hide-l" data-l="24h volume">${m ? compact(m.vol) : "–"}</td>
-        <td data-l="Bot score">${scoreCell(d, thr)}</td>
-        <td class="r" data-l="Status">${statusPill(c, d, thr)}</td></tr>`; }).join("") + "</tbody></table>"
+        <td class="r num">${ml("Price", "price")}<b>${px(m ? m.px : d && d.price)}</b></td>
+        <td class="r num ${cls(ch)}">${ml("24h", "chg24")}${pct(ch)}</td>
+        <td class="r num ${cls(apr)}">${ml("Funding (APR)", "funding")}${apr == null ? "–" : pct(apr, 1)}</td>
+        <td class="r num hide-m hide-l">${ml("Open interest", "oi")}${m ? compact(m.oi) : "–"}</td>
+        <td class="r num hide-m hide-l">${ml("24h volume", "vol")}${m ? compact(m.vol) : "–"}</td>
+        <td>${ml("Bot score", "score")}${scoreCell(d, thr)}</td>
+        <td class="r">${ml("Status", "status")}${statusPill(c, d, thr)}</td></tr>`; }).join("") + "</tbody></table>"
     : `<div class="empty">No coins configured.</div>`;
 
   // ---- market mood + headlines (shared by all coins) ----
@@ -987,11 +1122,11 @@ function renderMarkets() {
   const A = v => v / 100 * Math.PI;
   const needle = fg != null ? (() => { const [x, y] = pt(A(fg), 36); return `<line x1="60" y1="62" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--text)" stroke-width="3" stroke-linecap="round"/><circle cx="60" cy="62" r="4.5" fill="var(--text)"/>`; })() : "";
   $("mood").innerHTML = `<div class="mood"><div class="fng"><svg viewBox="0 0 120 70">${segs.map(([a, b, col], i) => arc(A(a) + (i ? .03 : 0), A(b) - (i < 4 ? .03 : 0), col)).join("")}${needle}</svg>
-      <b class="num">${fg ?? "–"}</b><small>${fg == null ? "unavailable" : fngLabel(fg)}</small><div class="muted" style="font-size:11.5px;margin-top:2px">Fear &amp; Greed index</div></div>
+      <b class="num">${fg ?? "–"}</b><small>${fg == null ? "unavailable" : fngLabel(fg)}</small><div class="muted" style="font-size:11.5px;margin-top:2px">Fear &amp; Greed index${tip("fng")}</div></div>
       <div>
-        <div class="mrow"><div>News sentiment<small>AI read of recent headlines, −1 to +1</small></div><b class="num ${cls(s)}">${s == null ? (CFG && !CFG.ai.enabled ? "needs AI" : "–") : num2(s)}</b></div>
-        <div class="mrow"><div>Crash-risk probability<small>Blocks new trades at ${Math.round(thrR * 100)}% or more</small></div><b class="num ${r != null && r >= thrR ? "down" : ""}">${r == null ? "–" : Math.round(r * 100) + "%"}</b></div>
-        <div class="mrow"><div>AI usage<small>${S.ai && S.ai.enabled ? esc(S.ai.provider) : "AI signal is off"}</small></div><b class="num">${S.ai ? S.ai.calls + " calls · $" + (S.ai.usd || 0).toFixed(3) : "–"}</b></div>
+        <div class="mrow"><div>News sentiment${tip("newssent")}<small>AI read of recent headlines, −1 to +1</small></div><b class="num ${cls(s)}">${s == null ? (CFG && !CFG.ai.enabled ? "needs AI" : "–") : num2(s)}</b></div>
+        <div class="mrow"><div>Crash-risk probability${tip("crash")}<small>Blocks new trades at ${Math.round(thrR * 100)}% or more</small></div><b class="num ${r != null && r >= thrR ? "down" : ""}">${r == null ? "–" : Math.round(r * 100) + "%"}</b></div>
+        <div class="mrow"><div>AI usage${tip("aiuse")}<small>${S.ai && S.ai.enabled ? esc(S.ai.provider) : "AI signal is off"}</small></div><b class="num">${S.ai ? S.ai.calls + " calls · $" + (S.ai.usd || 0).toFixed(3) : "–"}</b></div>
       </div></div>`;
   $("news").innerHTML = (S.headlines || []).length ? `<ul class="news">${S.headlines.map(h => `<li>${esc(h)}</li>`).join("")}</ul>` : `<div class="empty" style="padding:16px">No headlines loaded.</div>`;
 
@@ -999,8 +1134,8 @@ function renderMarkets() {
   const c = SEL, m = MK[c], d = D[c], pos = P.find(p => p.coin === c), ch = chg(m);
   $("dHead").innerHTML = c ? `<div class="dhead">${logo(c, "lg")}<div><div style="font-weight:700;font-size:16px">${esc(c)}-USD <span class="muted" style="font-weight:500;font-size:13px">Perpetual</span></div>
       <div style="display:flex;align-items:center;gap:10px"><span class="px num">${px(m ? m.px : d && d.price)}</span>${ch != null ? delta(ch, pct(ch)) : ""}</div></div>
-      <div class="dstats num"><div><small>Price 24h ago</small>${m ? px(m.prev) : "–"}</div><div><small>Funding / hour</small><span class="${cls(m && m.funding)}">${m ? pct(m.funding * 100, 4) : "–"}</span></div>
-      <div><small>Open interest</small>${m ? compact(m.oi) : "–"}</div>${pos ? `<div><small>Your position</small><span class="${pos.side > 0 ? "up" : "down"}">${pos.side > 0 ? "Long" : "Short"} ${pos.size}</span></div>` : ""}</div></div>` : "";
+      <div class="dstats num"><div><small>Price 24h ago${tip("prev")}</small>${m ? px(m.prev) : "–"}</div><div><small>Funding / hour${tip("fundh")}</small><span class="${cls(m && m.funding)}">${m ? pct(m.funding * 100, 4) : "–"}</span></div>
+      <div><small>Open interest${tip("oi")}</small>${m ? compact(m.oi) : "–"}</div>${pos ? `<div><small>Your position</small><span class="${pos.side > 0 ? "up" : "down"}">${pos.side > 0 ? "Long" : "Short"} ${pos.size}</span></div>` : ""}</div></div>` : "";
 
   $("sigWhen").textContent = d ? "checked " + ago(d.t) : "";
   if (!d) {
@@ -1008,16 +1143,16 @@ function renderMarkets() {
     $("dFactors").innerHTML = ""; return;
   }
   const rsiTxt = d.rsi >= 70 ? "overbought" : d.rsi <= 30 ? "oversold" : "neutral";
-  $("dSignal").innerHTML = `<div class="score-big"><b class="num ${cls(d.score)}">${num2(d.score)}</b>${statusPill(c, d, thr)}</div>
+  $("dSignal").innerHTML = `<div class="score-big"><b class="num ${cls(d.score)}">${num2(d.score)}</b>${statusPill(c, d, thr)}${tip("score")}</div>
     ${gauge(d.score, thr)}<div class="gauge-l"><span>−1 short</span><span>trades beyond ±${thr}</span><span>long +1</span></div>
-    <div class="note"><b>${esc(noteText(d.note))}</b><span class="num">RSI ${d.rsi} (${rsiTxt})${d.ai ? ` · rules-only score ${num2(d.rules)}` : ""}</span></div>
-    ${d.ai ? `<div style="margin-top:14px"><div style="font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px">${ic("cpu")}AI opinion</div>
+    <div class="note"><b>${esc(noteText(d.note))}</b><span class="num">RSI ${d.rsi} (${rsiTxt})${tip("rsi")}${d.ai ? ` · rules-only score ${num2(d.rules)}` : ""}</span></div>
+    ${d.ai ? `<div style="margin-top:14px"><div style="font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px">${ic("cpu")}AI opinion${tip("aiop")}</div>
       <div class="ai3"><i style="flex:${d.ai.long}"></i><i style="flex:${d.ai.flat}"></i><i style="flex:${d.ai.short}"></i></div>
       <div class="gauge-l num"><span class="up">Long ${Math.round(d.ai.long * 100)}%</span><span>Flat ${Math.round(d.ai.flat * 100)}%</span><span class="down">Short ${Math.round(d.ai.short * 100)}%</span></div></div>` : ""}`;
   const W8 = CFG ? CFG.weights : {};
   $("dFactors").innerHTML = Object.entries(d.factors).map(([k, v]) => {
     const [nm, sub] = FACTORS[k] || [k, ""], w = W8[k] || 0, off = v == null || !w, wd = off ? 0 : Math.abs(clamp(v, -1, 1)) * 50;
-    return `<div class="fac ${off ? "off" : ""}"><div class="nm">${esc(nm)}<small>${off ? (w ? "no data" : "turned off") : esc(sub) + " · weight " + w}</small></div>
+    return `<div class="fac ${off ? "off" : ""}"><div class="nm">${esc(nm)}${tip("f_" + k)}<small>${off ? (w ? "no data" : "turned off") : esc(sub) + " · weight " + w}</small></div>
       <div class="db"><i style="left:${v >= 0 ? 50 : 50 - wd}%;width:${wd}%;background:${v >= 0 ? "var(--up)" : "var(--down)"}"></i></div>
       <div class="v num ${off ? "" : cls(v)}">${off ? "–" : num2(v)}</div></div>`; }).join("") +
     `<div class="muted" style="font-size:12px;margin-top:12px">Each factor reads from −1 (bearish) to +1 (bullish). The score is their weighted average${d.ai ? ", blended with the AI view" : ""}.</div>`;
@@ -1029,29 +1164,29 @@ function renderTrades() {
   const gw = wins.reduce((a, t) => a + t.pnl, 0), gl = -losses.reduce((a, t) => a + t.pnl, 0), real = gw - gl;
   const kpi = (icon, l, v, s) => `<div class="card kpi"><div class="l">${ic(icon)}${l}</div><div class="v num">${v}</div><div class="s">${s}</div></div>`;
   $("tKpis").innerHTML =
-    kpi("wallet", "Realized P&amp;L", `<span class="${cls(real)}">${usd(real, 1)}</span>`, `${C.length} closed trade${C.length === 1 ? "" : "s"}`) +
-    kpi("target", "Win rate", C.length ? Math.round(wins.length / C.length * 100) + "%" : "–", `${wins.length} wins · ${losses.length} losses`) +
-    kpi("layers", "Profit factor", gl ? (gw / gl).toFixed(2) : wins.length ? "∞" : "–", "gross won ÷ gross lost") +
-    kpi("list", "Avg win / loss", `<span class="up">${wins.length ? usd(gw / wins.length) : "–"}</span><span class="muted" style="font-weight:500"> / </span><span class="down">${losses.length ? usd(-gl / losses.length) : "–"}</span>`, "per trade");
+    kpi("wallet", "Realized P&amp;L" + tip("realized"), `<span class="${cls(real)}">${usd(real, 1)}</span>`, `${C.length} closed trade${C.length === 1 ? "" : "s"}`) +
+    kpi("target", "Win rate" + tip("winrate"), C.length ? Math.round(wins.length / C.length * 100) + "%" : "–", `${wins.length} win${wins.length === 1 ? "" : "s"} · ${losses.length} loss${losses.length === 1 ? "" : "es"}`) +
+    kpi("layers", "Profit factor" + tip("pf"), gl ? (gw / gl).toFixed(2) : wins.length ? "∞" : "–", "gross won ÷ gross lost") +
+    kpi("list", "Avg win / loss" + tip("avgwl"), `<span class="up">${wins.length ? usd(gw / wins.length) : "–"}</span><span class="muted" style="font-weight:500"> / </span><span class="down">${losses.length ? usd(-gl / losses.length) : "–"}</span>`, "per trade");
   $("cumSub").textContent = C.length ? `${C.length} trades` : "";
 
   const coins = [...new Set((S.closed || []).map(t => t.coin))];
   $("tCoin").innerHTML = `<option value="">All coins</option>` + coins.map(c => `<option ${c === TCOIN ? "selected" : ""}>${esc(c)}</option>`).join("");
   const T = (S.closed || []).filter(t => (!TCOIN || t.coin === TCOIN) && (TF === "all" || (TF === "win" ? t.pnl > 0 : t.pnl < 0)));
-  $("trades").innerHTML = T.length ? `<table class="t"><thead><tr><th>Market</th><th class="r">Entry → Exit</th><th class="r hide-l">Move</th><th>Reason</th><th class="r">Closed</th><th class="r">P&amp;L</th></tr></thead><tbody>` +
+  $("trades").innerHTML = T.length ? `<table class="t wide"><thead><tr><th>Market</th><th class="r">Entry → Exit${tip("entryexit")}</th><th class="r hide-l">Move${tip("move")}</th><th>Reason${tip("reason")}</th><th class="r">Closed${tip("closed")}</th><th class="r">P&amp;L${tip("tradepnl")}</th></tr></thead><tbody>` +
     T.map(t => { const opening = /^open/i.test(t.reason || ""), mv = t.entry ? (t.exit - t.entry) / t.entry * 100 * (t.side || 1) : null;
       return `<tr class="click" data-coin="${esc(t.coin)}"><td class="hd"><div class="coin">${logo(t.coin)}<div class="nm"><b>${esc(t.coin)} ${sideTag(t.side)}</b></div></div></td>
-        <td class="r num" data-l="Entry → Exit">${t.entry ? px(t.entry) + " → " : ""}${px(t.exit)}</td>
-        <td class="r num hide-l ${cls(mv)}" data-l="Move">${mv == null ? "–" : pct(mv)}</td>
-        <td data-l="Reason"><span class="pill">${esc(t.reason)}</span></td>
-        <td class="r num" data-l="Closed">${when(t.at)}</td>
-        <td class="r num ${opening ? "" : cls(t.pnl)}" data-l="P&amp;L"><b>${opening ? '<span class="muted">opened</span>' : usd(t.pnl, 1)}</b></td></tr>`; }).join("") + "</tbody></table>"
+        <td class="r num">${ml("Entry → Exit", "entryexit")}${t.entry ? px(t.entry) + " → " : ""}${px(t.exit)}</td>
+        <td class="r num hide-l ${cls(mv)}">${ml("Move", "move")}${mv == null ? "–" : pct(mv)}</td>
+        <td>${ml("Reason", "reason")}<span class="pill">${esc(t.reason)}</span></td>
+        <td class="r num">${ml("Closed", "closed")}${when(t.at)}</td>
+        <td class="r num ${opening ? "" : cls(t.pnl)}">${ml("P&amp;L", "tradepnl")}<b>${opening ? '<span class="muted">opened</span>' : usd(t.pnl, 1)}</b></td></tr>`; }).join("") + "</tbody></table>"
     : `<div class="empty">${ic("inbox")}<b>No trades match</b>Closed trades appear here with their profit or loss.</div>`;
 
   const by = {}; for (const t of C) { const b = by[t.coin] ||= { n: 0, w: 0, p: 0 }; b.n++; b.w += t.pnl > 0; b.p += t.pnl; }
-  $("byCoin").innerHTML = Object.keys(by).length ? `<table class="t"><thead><tr><th>Coin</th><th class="r">Trades</th><th class="r">Win %</th><th class="r">P&amp;L</th></tr></thead><tbody>` +
+  $("byCoin").innerHTML = Object.keys(by).length ? `<table class="t"><thead><tr><th>Coin</th><th class="r">Trades${tip("ntrades")}</th><th class="r">Win %${tip("winpct")}</th><th class="r">P&amp;L${tip("coinpnl")}</th></tr></thead><tbody>` +
     Object.entries(by).sort((a, b) => b[1].p - a[1].p).map(([c, b]) => `<tr class="click" data-coin="${esc(c)}"><td class="hd"><div class="coin">${logo(c, "sm")}<b>${esc(c)}</b></div></td>
-      <td class="r num" data-l="Trades">${b.n}</td><td class="r num" data-l="Win %">${Math.round(b.w / b.n * 100)}%</td><td class="r num ${cls(b.p)}" data-l="P&amp;L"><b>${usd(b.p, 1)}</b></td></tr>`).join("") + "</tbody></table>"
+      <td class="r num">${ml("Trades", "ntrades")}${b.n}</td><td class="r num">${ml("Win %", "winpct")}${Math.round(b.w / b.n * 100)}%</td><td class="r num ${cls(b.p)}">${ml("P&amp;L", "coinpnl")}<b>${usd(b.p, 1)}</b></td></tr>`).join("") + "</tbody></table>"
     : `<div class="empty" style="padding:20px">No closed trades yet.</div>`;
 }
 $("tFilter").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; TF = b.dataset.f;
