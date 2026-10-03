@@ -38,6 +38,37 @@ down = [dict(b, o=1e4 / b["o"], c=1e4 / b["c"], h=1e4 / b["l"], l=1e4 / b["h"]) 
 r = backtest(down, cfg, 100, 5)
 assert r["trades"] >= 1 and r["return_pct"] > 0, r
 
+# like_live: historical funding / Fear & Greed feed the score. Crowded longs + extreme greed veto the uptrend.
+H = 14_400_000
+up4h = [dict(b, t=b["t"] * H) for b in up]
+base = backtest(up4h, cfg, 100, 5)
+assert backtest(up4h, cfg, 100, 5, {"funding": [(0, 0.0)], "fear_greed": [(0, 50)]})["trades"] == base["trades"]
+assert backtest(up4h, cfg, 100, 5, {"funding": [(0, 0.0005)], "fear_greed": [(0, 100)]})["trades"] == 0
+# max_hold_hours closes positions like the live bot, so a short hold means more round trips
+assert backtest(up4h, dict(cfg, risk=dict(cfg["risk"], max_hold_hours=8)), 100, 5)["trades"] > base["trades"]
+
+# several coins share one account: max_open_positions is enforced, earlier coins (config order) get the slot first
+from backtest import prepare, simulate
+rows = prepare(up4h, cfg)
+one = simulate({"A": rows, "B": rows}, dict(cfg, risk=dict(cfg["risk"], max_open_positions=1)), 100, {"A": 5, "B": 5})
+assert set(one["per_coin"]) == {"A"}, one
+two = simulate({"A": rows, "B": rows}, dict(cfg, risk=dict(cfg["risk"], max_open_positions=2)), 100, {"A": 5, "B": 5})
+assert set(two["per_coin"]) == {"A", "B"}, two
+# a window only trades inside it, and close_at_end books the open position
+mid = rows[len(rows) // 2]["t"]
+w = simulate({"A": rows}, cfg, 100, {"A": 5}, start=mid, close_at_end=True)
+assert 0 < w["trades"] < base["trades"], w
+
+# live fills shown on the dashboard: side is the position's direction (a sell that closes a long is "long"), pnl net of fee
+from broker import HyperliquidBroker
+hb = object.__new__(HyperliquidBroker)
+hb.addr = "0x0"
+hb.info = type("Info", (), {"user_fills": lambda self, addr: [  # newest first, like the API
+    {"coin": "BTC", "px": "100", "side": "A", "dir": "Close Long", "closedPnl": "5", "fee": "0.5", "time": 2000},
+    {"coin": "BTC", "px": "90", "side": "B", "dir": "Open Long", "closedPnl": "0", "fee": "0.4", "time": 1000}]})()
+fills = hb.closed()
+assert [f["side"] for f in fills] == [1, 1] and fills[-1]["pnl"] == 4.5 and fills[-1]["at"] == 2.0, fills
+
 # LLM answers are normalized over the allowed options; junk is rejected
 import ai
 q = {"x": {"type": "choice", "criteria": {"long": "", "short": "", "flat": ""}}}

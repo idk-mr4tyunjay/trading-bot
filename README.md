@@ -58,8 +58,34 @@ A/B it: run `config.json` and a copy with AI enabled side by side in paper mode,
 
 The default is therefore **4h**. Be honest with yourself about what these numbers mean: this is a thin edge measured
 in-sample, and it's sensitive to the thresholds (entry 0.3–0.5 gives PF 1.04–1.30). It's roughly $10–30 over
-2+ years on $100. The value for you is learning with controlled risk, not getting rich. The backtest covers only the
-technical factors, because funding, order book, news and Jev have no history.
+2+ years on $100. The value for you is learning with controlled risk, not getting rich. The backtest prints two runs:
+`technical_only`, and `like_live`, which replays historical funding and Fear & Greed with a neutral order book.
+News and Jev/AI have no history, so neither run includes them.
+
+### Walk-forward (out of sample): the honest number
+
+The table above is in-sample: the thresholds were chosen on the same history they're scored on. `src/walkforward.py`
+fixes that. It picks entry/exit thresholds on 365 days, trades the **next 90 unseen days** with them, rolls forward,
+and reports only the unseen windows. All coins share one account under `max_open_positions`, like the live bot,
+with historical funding and Fear & Greed in the score (`like_live`).
+
+5 unseen windows, 2025-07-03 → 2026-09-26 (~450 days), $100, fees included:
+
+| Coins | Max open | Return | Per year | PF | Worst window DD | Trades |
+|---|---|---|---|---|---|---|
+| **BTC, ETH, SOL** (default) | 2 | **+31.5%** | +24.9% | **1.38** | **12.0%** | 146 |
+| Top 15 by volume | 2 | +25.5% | +20.2% | 1.19 | 16.1% | 266 |
+| Top 15 by volume | 3 | +20.2% | +16.1% | 1.12 | 22.5% | 383 |
+| Top 15 by volume | 4 | +35.0% | +27.5% | 1.14 | 24.8% | 508 |
+
+Top 15 = BTC, ETH, HYPE, ZEC, SOL, NEAR, XRP, SAND, WLD, ZRO, ENA, AAVE, SUI, ONDO, UNI (24h volume on 2026-10-03).
+Over the same windows, equal-weight buy and hold was −9.9% for BTC/ETH/SOL and +108% for the top 15. The second
+figure is inflated by survivorship: today's most-traded coins are partly the ones that pumped.
+
+**What it says:** the edge survives out of sample on BTC/ETH/SOL, but it's thin (5 windows, 146 trades, one
+losing window). Adding coins **didn't help**: every top-15 run has a lower PF and a deeper drawdown, and the one that
+returns a bit more (4 open) only does it by doubling the drawdown, since 4 positions put up to 4% at risk at once.
+So the default stays at three coins and 2 open positions. The thresholds picked in each window move around (0.40–0.45 entry), so don't read much into any single value.
 
 ### Costs of running this
 
@@ -127,6 +153,9 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ```
 ```bash
 .venv/bin/python src/backtest.py --coin ETH --interval 4h
+```
+```bash
+.venv/bin/python src/walkforward.py
 ```
 ```bash
 .venv/bin/python src/bot.py run
@@ -231,5 +260,5 @@ When the kill switch trips, the bot closes everything and **pauses** (it doesn't
 ## Known simplifications
 
 - Paper fills happen at the mid price ± slippage. Funding isn't simulated, and stops are checked every 60 s, so gaps aren't modelled.
-- The backtest only covers technical factors (the others have no history).
+- The backtest has no order book, news or AI history (`like_live` treats the book as neutral). `src/backtest.py --coin` tests one coin; `src/walkforward.py` runs all coins on one account under `max_open_positions`.
 - The funding carry scanner doesn't execute trades. Add execution only if the scan shows carry worth your capital.

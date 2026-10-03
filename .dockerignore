@@ -6,3 +6,4 @@ logs
 .github
 __pycache__
 *.md
+.cache
