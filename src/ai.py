@@ -163,7 +163,7 @@ if __name__ == "__main__":  # python src/ai.py  -> one live news + BTC call with
     import sys
     import data
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # repo root: config.json, .env, state/, logs/
     for line in open(".env") if os.path.exists(".env") else []:
         k, sep, v = line.strip().partition("=")
         if sep and not k.startswith("#"):

@@ -273,11 +273,13 @@ def main():
     ap.add_argument("cmd", choices=["run", "scan"])
     ap.add_argument("--config", default="config.json")
     a = ap.parse_args()
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # repo root: config.json, .env, state/, logs/
     load_env()
     os.makedirs("state", exist_ok=True)
     os.makedirs("logs", exist_ok=True)
     cfg = load_json(a.config, None)
+    if cfg is None:
+        raise SystemExit("config not found: %s" % os.path.abspath(a.config))
     name = os.path.splitext(os.path.basename(a.config))[0]
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s",
                         handlers=[logging.StreamHandler(), logging.FileHandler("logs/%s.log" % name)])
