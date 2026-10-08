@@ -112,4 +112,88 @@ for mutate, expect in [(lambda c: c["risk"].update(risk_per_trade_pct=50), "betw
     bad = copy.deepcopy(cfg)
     mutate(bad)
     assert expect in (ui.validate(bad, cfg, {"BTC", "ETH", "SOL"}) or ""), expect
+# funding: longs pay positive funding while open, shorts receive it; the backtest books it into equity
+from backtest import Funding, luck
+H1 = 3_600_000
+assert abs(Funding([(1, 0.1), (2, 0.2), (3, 0.3)]).paid(1, 3) - 0.5) < 1e-12  # (t0, t1]
+fund = [(t, 0.0001) for t in range(0, up4h[-1]["t"] + H, H1)]  # 0.01%/h, ~88%/yr
+free = simulate({"A": rows}, cfg, 100, {"A": 5})
+paid = simulate({"A": rows}, cfg, 100, {"A": 5}, funding={"A": fund})
+assert paid["funding_paid_usd"] > 0 and paid["return_pct"] < free["return_pct"], (paid, free)
+down4h = [dict(b, t=b["t"] * H) for b in down]
+got = simulate({"A": prepare(down4h, cfg)}, cfg, 100, {"A": 5}, funding={"A": fund})
+assert got["funding_paid_usd"] < 0, got  # the short collected it
+
+# take profit is a resting limit: maker fee, no slippage. Without maker_pct it falls back to taker + slippage
+taker_cfg = dict(cfg, fees={k: v for k, v in cfg["fees"].items() if k != "maker_pct"})
+assert simulate({"A": rows}, cfg, 100, {"A": 5})["fees_paid_usd"] < simulate({"A": rows}, taker_cfg, 100, {"A": 5})["fees_paid_usd"]
+
+# luck check: a steady winner is unlikely to be chance, a coin flip is
+assert luck([1.0, -0.5] * 30)["t"] > 2 and luck([1.0, -0.5] * 30)["p_loss"] < 0.05
+assert abs(luck([1.0, -1.0] * 30)["t"]) < 1e-9 and luck([-1.0, 0.5] * 30)["p_loss"] > 0.95
+
+# Binance's 8-hourly funding becomes hourly rates, placed after it's paid (no peeking)
+import data
+hf = data.hourly_funding([(0, 0.0008), (8 * H1, 0.0004)])
+assert len(hf) == 16 and hf[0] == (0, 0.0001) and hf[8] == (8 * H1, 0.00005) and abs(sum(r for _, r in hf) - 0.0012) < 1e-12
+
+# paper broker: charges funding pro rata, and fills the take profit at its price with the maker fee
+import tempfile
+from broker import PaperBroker
+tmp = tempfile.mkdtemp()
+pb = PaperBroker(os.path.join(tmp, "p.json"), 100, cfg["fees"])
+pb.open("BTC", True, 0.001, 50000, 49000, 52000, 3, 5)
+pb.s["positions"]["BTC"]["fund_t"] -= 3600  # opened an hour ago
+pb.accrue_funding({"BTC": 0.0001}, {"BTC": 50000})
+assert abs(pb.s["positions"]["BTC"]["funding"] - 0.005) < 1e-6, pb.s  # 0.001 BTC x $50k x 0.01%
+pb.check_stops({"BTC": 52100})
+c = pb.closed()[-1]
+assert c["exit"] == 52000 and c["reason"] == "take profit" and abs(c["pnl"] - (2.0 - 52 * cfg["fees"]["maker_pct"] / 100)) < 1e-3, c
+
+# live broker: stop is an exchange trigger, target a resting reduce-only Gtc limit at the target price
+orders = []
+ok = {"status": "ok", "response": {"data": {"statuses": [{"resting": {"oid": 1}}]}}}
+hb2 = object.__new__(HyperliquidBroker)
+hb2.addr, hb2.path, hb2.opened = "0x0", os.path.join(tmp, "o.json"), {}
+hb2.info = type("Info", (), {"open_orders": lambda self, a: []})()
+hb2.ex = type("Ex", (), {
+    "update_leverage": lambda self, *a, **k: None,
+    "market_open": lambda self, *a: {"status": "ok", "response": {"data": {"statuses": [
+        {"filled": {"totalSz": "0.001", "avgPx": "50000"}}]}}},
+    "order": lambda self, coin, is_buy, sz, px, typ, reduce_only: orders.append((is_buy, sz, px, typ, reduce_only)) or ok})()
+assert hb2.open("BTC", True, 0.001, 50000, 49000, 52000, 3, 5)
+(sl_o, tp_o) = orders
+assert sl_o[3]["trigger"]["tpsl"] == "sl" and sl_o[2] == 49000, sl_o
+assert tp_o[3] == {"limit": {"tif": "Gtc"}} and tp_o[2] == 52000, tp_o
+assert all(o[0] is False and o[1] == 0.001 and o[4] is True for o in orders), orders
+
+# funding carry backtest: in only while funding pays, earns ~funding x lev/(lev+1) on capital, minus costs
+import carry
+flat = [{"t": i * H, "o": 100.0, "h": 100.0, "l": 100.0, "c": 100.0, "v": 1} for i in range(2400)]  # 400 days of 4h
+rate = lambda apr: [(t, apr / 8760) for t in range(0, 2400 * H, H1)]
+assert abs(carry.trailing_apr(Funding(rate(0.2)), 30 * 86_400_000, 7) - 20) < 1e-6
+r = carry.simulate_carry({"A": (flat, rate(0.2))})
+assert r["trades"] == 1 and 10 < r["per_year_pct"] < 20 * 2 / 3, r
+r = carry.simulate_carry({"A": (flat, rate(0.02))})
+assert r["trades"] == 0 and r["return_pct"] == 0, r
+flip = [(t, (0.2 if t < 1200 * H else -0.1) / 8760) for t, _ in rate(0)]
+r = carry.simulate_carry({"A": (flat, flip)})
+assert r["trades"] == 1 and r["in_market_pct"] < 55 and r["return_pct"] > 0, r  # left when funding turned
+rising = [dict(b, o=100 * 1.3 ** (i / 2400), h=100 * 1.3 ** ((i + 1) / 2400), c=100 * 1.3 ** ((i + 1) / 2400))
+          for i, b in enumerate(flat)]
+r = carry.simulate_carry({"A": (rising, rate(0.2))})
+assert r["rebalances"] == 1 and r["liquidations"] == 0, r
+# a 10x rally must not inflate the income: rebalancing resizes the pair back to the account
+moon = [dict(b, o=100 * 10 ** (i / 2400), h=100 * 10 ** ((i + 1) / 2400), c=100 * 10 ** ((i + 1) / 2400))
+        for i, b in enumerate(flat)]
+r = carry.simulate_carry({"A": (moon, rate(0.2))})
+assert r["rebalances"] >= 8 and r["per_year_pct"] < 20 * 2 / 3 * 1.25, r  # at most the 25% drift between rebalances
+
+# OpenRouter: thinking is switched off (DeepSeek V4 thinks by default), models go as a fallback list
+sent = []
+ai._post = lambda url, key, body, timeout: sent.append(body) or {"model": "m", "choices": [{"message": {
+    "content": '{"sentiment": {"bullish": 1}, "risk_event": {"true": 0, "false": 1}}'}}]}
+os.environ["OPENROUTER_API_KEY"] = "test"
+assert ai.news_view(["h"], dict(cfg["ai"], provider="openrouter")) == (1.0, 0.0)
+assert sent[-1]["reasoning"] == {"enabled": False} and sent[-1]["models"] == cfg["ai"]["model"], sent[-1]
 print("ok")

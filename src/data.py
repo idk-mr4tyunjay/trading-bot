@@ -50,6 +50,46 @@ def http_get(url, timeout=10):
         return r.read()
 
 
+def binance_candles(coin, interval, start_ms, end_ms):
+    """Closed USDT-M perp candles from Binance's public API (no key), oldest first. Used only for long backtests:
+    Hyperliquid serves just the latest 5000 bars, and Binance's prices track Hyperliquid's closely for majors."""
+    out, t = [], start_ms
+    while t < end_ms:
+        rows = json.loads(http_get("https://fapi.binance.com/fapi/v1/klines?symbol=%sUSDT&interval=%s&startTime=%d&limit=1500"
+                                   % (coin, interval, t), timeout=30))
+        out += [{"t": r[0], "o": float(r[1]), "h": float(r[2]), "l": float(r[3]), "c": float(r[4]), "v": float(r[5])}
+                for r in rows if r[6] < end_ms]  # r[6] = close time: keep closed bars only
+        if len(rows) < 1500:
+            break
+        t = rows[-1][0] + 1
+        time.sleep(0.3)
+    return out
+
+
+def binance_funding(coin, start_ms, end_ms):
+    """Binance funding events as [(time_ms, rate for the period)], oldest first."""
+    out, t = [], start_ms
+    while t < end_ms:
+        rows = json.loads(http_get("https://fapi.binance.com/fapi/v1/fundingRate?symbol=%sUSDT&startTime=%d&endTime=%d&limit=1000"
+                                   % (coin, t, end_ms), timeout=30))
+        out += [(r["fundingTime"], float(r["fundingRate"])) for r in rows]
+        if len(rows) < 1000:
+            break
+        t = rows[-1]["fundingTime"] + 1
+        time.sleep(0.3)
+    return out
+
+
+def hourly_funding(events):
+    """Binance pays every 8h (sometimes 4h); Hyperliquid every hour. Spread each event over the hours after it is
+    paid as [(time_ms, hourly rate)], so both venues look alike and a backtest never sees a rate before it is known."""
+    out = []
+    for i, (t, r) in enumerate(events):
+        gap = min(max(round((t - events[i - 1][0]) / 3_600_000), 1), 8) if i else 8
+        out += [(t + k * 3_600_000, r / gap) for k in range(gap)]
+    return out
+
+
 def fear_greed():
     """alternative.me Crypto Fear & Greed, 0..100, updates daily."""
     return cached("fear_greed", 3600, lambda: int(json.loads(http_get("https://api.alternative.me/fng/?limit=1"))["data"][0]["value"]))

@@ -72,6 +72,7 @@ def run(cfg, name, cfg_path):
             market.refresh()
             mids = market.mids()
             broker.check_stops(mids)
+            broker.accrue_funding({c: float(x.get("funding") or 0) for c, x in market.ctx.items()}, mids)
             eq = broker.equity(mids)
             positions = broker.positions()
 

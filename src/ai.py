@@ -67,7 +67,8 @@ def evaluate(state, questions, cfg):
                 {"models": m} if isinstance(m, list) else {"model": m},  # a list = OpenRouter tries them in order
                 messages=[{"role": "system", "content": SYSTEM},
                           {"role": "user", "content": json.dumps({"state": state, "questions": questions})}],
-                response_format={"type": "json_object"}, temperature=0), cfg["timeout_s"])
+                # thinking models (DeepSeek V4 reasons by default) would bill and wait for hidden reasoning tokens
+                response_format={"type": "json_object"}, temperature=0, reasoning={"enabled": False}), cfg["timeout_s"])
             spend["usd"] += (res.get("usage") or {}).get("cost") or 0
             answers = parse_llm(res["choices"][0]["message"]["content"], questions)
             spend["model"] = res.get("model")

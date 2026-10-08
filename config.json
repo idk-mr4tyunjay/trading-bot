@@ -25,9 +25,9 @@
     "fee_multiple": 3,
     "max_hold_hours": 240
   },
-  "fees": {"taker_pct": 0.045, "slippage_pct": 0.02},
+  "fees": {"taker_pct": 0.045, "maker_pct": 0.015, "slippage_pct": 0.02},
 
-  "ai": {"enabled": false, "provider": "openrouter", "model": ["google/gemma-4-26b-a4b-it:free", "qwen/qwen3.8-27b:free"],
+  "ai": {"enabled": false, "provider": "openrouter", "model": ["deepseek/deepseek-v4-flash", "google/gemma-4-26b-a4b-it"],
          "weight": 0.4, "flat_veto": 0.6, "min_confidence": 0.0, "timeout_s": 45},
   "news": {
     "enabled": true,

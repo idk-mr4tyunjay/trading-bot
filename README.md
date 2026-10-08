@@ -22,7 +22,7 @@ Every weight, threshold and risk limit lives in `config.json`. It starts in **pa
 | Trading accuracy | **No published trading benchmarks.** TypeSafe's own evals are non-finance tasks, with ~68% mean agreement against LLM-made reference labels. The docs say Jev can't do arithmetic and breaks on large irrelevant inputs. |
 | Access | Early access. **Signups have been paused since 2026-09-22.** I confirmed the REST endpoint (`api.typesafe.ai/v1/systemone`) is live. On OpenRouter, only `typesafe/jev-router` exists. It uses Jev to *pick an LLM* for your chat request and returns text, not Jev's calibrated probabilities. |
 
-**Conclusion for a small trader:** HFT is not your game. Your Oracle box is in Bangalore, about 100 ms or more from
+**Conclusion for a small trader:** HFT is not your game. Your Oracle box is in Singapore, tens of milliseconds from
 Hyperliquid's Tokyo infrastructure. You'd be competing against co-located firms, and at small size, fees are larger
 than any per-trade edge. Jev *is* useful for what it's good at: **reading messy inputs (headlines, mixed signals)
 fast and cheaply, and returning calibrated probabilities.** This bot uses it that way:
@@ -32,10 +32,12 @@ fast and cheaply, and returning calibrated probabilities.** This bot uses it tha
 
 The bot works fully without AI. The same questions can go to **OpenRouter** (`ai.provider: "openrouter"`) today. The
 LLM is asked to return the same probabilities as JSON, and the answer is validated and normalized. That's slower
-(seconds rather than 100 ms, which doesn't matter on 4h bars) and less calibrated than Jev. The defaults are two free
-models with automatic fallback. OpenRouter free models allow about 50 requests/day without purchased credits, and the
-defaults use about 40/day (3 coins × 6 bars, plus news hourly). A paid fast model such as
-`deepseek/deepseek-v4-flash-0731` costs well under $0.01/day. Test your key with `.venv/bin/python src/ai.py`.
+(seconds rather than 100 ms, which doesn't matter on 4h bars) and less calibrated than Jev. The default is
+`deepseek/deepseek-v4-flash` with `google/gemma-4-26b-a4b-it` as the fallback, both paid but cheap: about 40 calls a
+day (3 coins × 6 bars, plus news hourly) comes to roughly $0.13 a month. Thinking is switched off in the request,
+because DeepSeek V4 reasons by default and would bill the hidden tokens. Free (`:free`) models were tried first, but
+their shared upstream pool kept answering 429 (rate limited), and they cap at 50 requests/day without purchased
+credits. Paid models need a few dollars of OpenRouter credit. Test your key with `.venv/bin/python src/ai.py`.
 A/B it: run `config.json` and a copy with AI enabled side by side in paper mode, then compare `logs/*.decisions.jsonl`.
 
 ### Arbitrage: realistic or not?
@@ -43,7 +45,7 @@ A/B it: run `config.json` and a copy with AI enabled side by side in paper mode,
 | Type | For a small account? |
 |---|---|
 | Cross-exchange price arb | **No.** You pay 0.05–0.1% taker fees on both legs, plus withdrawal and bridge fees and transfer delays, and pros close gaps in milliseconds. |
-| Funding carry (long spot + short perp on HL) | **Real but tiny.** Typical funding is 11–35% APR on alts. Entry and exit cost ~0.23% across 4 legs, so break-even takes 2–8 days, and funding flips negative in sell-offs. $100 at 15% APR is about $0.04/day. `python src/bot.py scan` shows live numbers. It's scan-only on purpose. |
+| Funding carry (long spot + short perp on HL) | **Real, safe-ish, and small right now.** `src/carry.py` backtests it: hold only while the 7-day funding average pays ≥ 15%/yr, leave below 5%. On BTC/ETH/SOL since 2020 that made +7.4%/yr with a 0.6% worst drawdown, but nearly all of it in 2020–21 (+15%, +29%); 2025 was +0.5% and 2026 +0.0%. On Hyperliquid since mid-2024, adding HYPE: +7.5%/yr, 2026 +2.5%. `python src/bot.py scan` shows live numbers. The bot doesn't trade it: Hyperliquid nets one position per coin, so it would need its own sub-account and spot-leg order code. |
 | Directional (this bot) | Possible edge on **slow timeframes only**. See the backtest below. |
 
 ### Backtest (real Hyperliquid candles, fees and slippage included, $100, 1% risk per trade)
@@ -87,6 +89,24 @@ losing window). Adding coins **didn't help**: every top-15 run has a lower PF an
 returns a bit more (4 open) only does it by doubling the drawdown, since 4 positions put up to 4% at risk at once.
 So the default stays at three coins and 2 open positions. The thresholds picked in each window move around (0.40–0.45 entry), so don't read much into any single value.
 
+**Update 2026-10-08: the longer, stricter test.** Those 450 days are too short to trust. Hyperliquid only serves the
+latest 5000 bars, so the window slides: five days later the same run gave +21.5% (PF 1.21), not +31.5%. The
+walk-forward now defaults to `--source binance`, Binance's USDT perps since 2020, which trade almost exactly like
+Hyperliquid's for these coins. Every run now also pays historical funding while a position is open (~1%/yr), takes
+profit at the maker fee, and ends with a luck check.
+
+23 unseen windows, 2021-01-10 → 2026-09-11 (~5.7 years), BTC/ETH/SOL, 2 open, $100:
+
+| | Return | Per year | PF | Worst window DD | Trades |
+|---|---|---|---|---|---|
+| Walk-forward | +135% | **+16.3%** | 1.20 | 14.6% | 821 |
+| Buy & hold (equal weight) | +1316% | +59.6% | | (−86% at worst) | |
+
+Luck check: t = 2.37, so this is unlikely to be chance over the whole period. But by year it's lumpy: most of the
+profit came in 2020, the 2022 crash and 2023. Since mid-2024 the edge is weak (Hyperliquid's own 450 days:
+t = 1.15, which can't be told apart from luck). Shorts are essential: long-only made about 0%/yr. Expect strings of
+9–11 losing trades and up to ~9 months below a previous high.
+
 ### Costs of running this
 
 | Item | Cost |
@@ -95,7 +115,7 @@ So the default stays at three coins and 2 open positions. The thresholds picked 
 | Hyperliquid perps | taker 0.045%, maker 0.015%, no gas. Round trip ≈ 0.09% plus slippage. On a $40 position that's about $0.04. |
 | Funding | paid or received hourly while holding a perp (usually ~0.001%/h) |
 | Deposit / withdraw | USDC on Arbitrum. Minimum deposit 5 USDC, and withdrawal costs $1. You also need a few cents of ETH on Arbitrum for gas. |
-| AI (optional) | OpenRouter free models: $0 (about 40 calls/day). Paid cheap model or Jev: under **$0.01/day** |
+| AI (optional) | DeepSeek V4 Flash via OpenRouter: about **$0.13/month** (about 40 calls/day, thinking off). Jev: similar |
 | News, Fear & Greed | free (RSS, alternative.me) |
 | **Tax (India)** | 30% flat on crypto gains plus cess. Losses can't be offset against other income. TDS rules apply to transfers. Check with a CA. |
 
@@ -156,6 +176,9 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ```
 ```bash
 .venv/bin/python src/walkforward.py
+```
+```bash
+.venv/bin/python src/carry.py
 ```
 ```bash
 .venv/bin/python src/bot.py run
@@ -259,6 +282,7 @@ When the kill switch trips, the bot closes everything and **pauses** (it doesn't
 
 ## Known simplifications
 
-- Paper fills happen at the mid price ± slippage. Funding isn't simulated, and stops are checked every 60 s, so gaps aren't modelled.
+- Paper fills happen at the mid price ± slippage. Funding is charged every poll at the current rate, and stops are checked every 60 s, so gaps aren't modelled.
 - The backtest has no order book, news or AI history (`like_live` treats the book as neutral). `src/backtest.py --coin` tests one coin; `src/walkforward.py` runs all coins on one account under `max_open_positions`.
-- The funding carry scanner doesn't execute trades. Add execution only if the scan shows carry worth your capital.
+- Carry is research only: `bot.py scan` shows live rates and `src/carry.py` backtests it (no spot/perp price gap, base-tier spot fees). Neither trades.
+- Binance history stands in for Hyperliquid's before mid-2024. Prices track closely for BTC/ETH/SOL; funding differs a little.

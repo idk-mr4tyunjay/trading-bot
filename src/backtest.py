@@ -1,24 +1,53 @@
-"""Backtest the strategy on real Hyperliquid candles, fees included.
-    python src/backtest.py --coin BTC [--interval 1h] [--config config.json]
+"""Backtest the strategy on real candles, with fees, slippage and funding payments.
+    python src/backtest.py --coin BTC [--interval 1h] [--source hyperliquid|binance] [--config config.json]
 Prints two runs: technical factors only, and "like_live", which replays historical funding and
 Fear & Greed and treats the order book as neutral. News/AI have no history and are left out.
+Both runs pay or receive the historical funding while a position is open.
 simulate() also runs several coins on one account under max_open_positions, like the live bot."""
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
+import random
 from bisect import bisect_right
 
 import strategy
 
 CACHE = ".cache"
+BINANCE_START = 1577836800000  # 2020-01-01
 
 
 def asof(series, t):
     """Latest value at or before t from [(t, value)] sorted by t, else None."""
     i = bisect_right(series, (t, float("inf")))
     return series[i - 1][1] if i else None
+
+
+class Funding:
+    """Sum of hourly funding rates paid in (t0, t1], from [(t_ms, hourly rate)] sorted by t."""
+    def __init__(self, series):
+        self.t, self.cum, s = [x[0] for x in series], [0.0], 0.0
+        for x in series:
+            s += x[1]
+            self.cum.append(s)
+
+    def paid(self, t0, t1):
+        return self.cum[bisect_right(self.t, t1)] - self.cum[bisect_right(self.t, t0)]
+
+
+def luck(pnls, seed=1):
+    """Could these trade results be luck? -> {"t": t-stat of the mean trade, "p_loss": share of 2000 bootstrap
+    resamples that lose money}. t above ~2 (p_loss under ~0.05) is hard to get by chance; below that, it's a coin flip."""
+    n = len(pnls)
+    if n < 2:
+        return {"t": 0.0, "p_loss": 1.0}
+    m = sum(pnls) / n
+    sd = math.sqrt(sum((x - m) ** 2 for x in pnls) / (n - 1))
+    rng = random.Random(seed)
+    p_loss = sum(sum(rng.choice(pnls) for _ in range(n)) <= 0 for _ in range(2000)) / 2000
+    return {"t": m / (sd / math.sqrt(n)) if sd else math.copysign(math.inf, m) if m else 0.0, "p_loss": p_loss}
 
 
 def prepare(candles, cfg, live=None):
@@ -38,37 +67,49 @@ def prepare(candles, cfg, live=None):
     return rows
 
 
-def simulate(prepared, cfg, equity=100.0, sz_decimals=None, start=None, end=None, close_at_end=False, pnls=None):
+def simulate(prepared, cfg, equity=100.0, sz_decimals=None, start=None, end=None, close_at_end=False, pnls=None,
+             funding=None):
     """prepared: {coin: prepare(...)} in priority order (the live bot scans cfg["coins"] in order).
     One account: realized equity sizes each trade and max_open_positions caps them.
-    start/end bound the decision times (ms). pnls, if given, collects every trade's P&L."""
+    start/end bound the decision times (ms). pnls, if given, collects every trade's P&L, net of both fees and funding.
+    funding: {coin: [(t_ms, hourly rate)]} charges longs / pays shorts the historical funding while a position is open.
+    The take profit is a resting limit order, so it pays the maker fee and no slippage."""
     rk, fees = cfg["risk"], cfg["fees"]
     cost = (fees["taker_pct"] + fees["slippage_pct"]) / 100
+    maker = fees.get("maker_pct", fees["taker_pct"]) / 100
     hold_ms = rk["max_hold_hours"] * 3_600_000
+    paid = {c: Funding(s) for c, s in (funding or {}).items()}
     steps = {}
     for coin, rows in prepared.items():
         for r in rows:
             if (start is None or r["t"] >= start) and (end is None or r["t"] < end):
                 steps.setdefault(r["t"], []).append((coin, r))
-    begin, peak, max_dd, fees_paid = equity, equity, 0.0, 0.0
+    begin, peak, max_dd, fees_paid, funding_paid = equity, equity, 0.0, 0.0, 0.0
     pos, last, trades = {}, {}, []
 
-    def close(coin, px):
+    def close(coin, px, c=cost):
         nonlocal equity, fees_paid
         p = pos.pop(coin)
-        pnl = p["side"] * (px - p["entry"]) * p["size"] - p["size"] * px * cost
+        pnl = p["side"] * (px - p["entry"]) * p["size"] - p["size"] * px * c
         equity += pnl
-        fees_paid += p["size"] * px * cost
-        trades.append((coin, pnl))
+        fees_paid += p["size"] * px * c
+        trades.append((coin, pnl - p["fee"] - p["funding"]))
 
     for t in sorted(steps):
+        for coin, p in pos.items():  # funding accrued since the last step, on the position's value at the last close
+            if coin in paid:
+                amt = p["side"] * p["size"] * last[coin] * paid[coin].paid(p["ft"], t)
+                equity -= amt
+                funding_paid += amt
+                p["funding"] += amt
+                p["ft"] = t
         for coin, r in steps[t]:  # stop checked before target: conservative when both are inside one bar
             p, bar = pos.get(coin), r["bar"]
             if p:
-                hit = (p["sl"] if (bar["l"] <= p["sl"] if p["side"] > 0 else bar["h"] >= p["sl"]) else
-                       p["tp"] if (bar["h"] >= p["tp"] if p["side"] > 0 else bar["l"] <= p["tp"]) else None)
-                if hit is not None:
-                    close(coin, hit)
+                if bar["l"] <= p["sl"] if p["side"] > 0 else bar["h"] >= p["sl"]:
+                    close(coin, p["sl"])
+                elif bar["h"] >= p["tp"] if p["side"] > 0 else bar["l"] <= p["tp"]:
+                    close(coin, p["tp"], maker)
         for coin, r in steps[t]:
             score, nxt, p = strategy.combine(r["f"], cfg["weights"]), r["nxt"], pos.get(coin)
             if p:
@@ -81,8 +122,8 @@ def simulate(prepared, cfg, equity=100.0, sz_decimals=None, start=None, end=None
                     side = 1 if score > 0 else -1
                     equity -= size * nxt * cost
                     fees_paid += size * nxt * cost
-                    pos[coin] = {"side": side, "size": size, "entry": nxt, "opened": t,
-                                 "sl": nxt - side * sl_d, "tp": nxt + side * tp_d}
+                    pos[coin] = {"side": side, "size": size, "entry": nxt, "opened": t, "sl": nxt - side * sl_d,
+                                 "tp": nxt + side * tp_d, "fee": size * nxt * cost, "funding": 0.0, "ft": t}
             last[coin] = r["bar"]["c"]
         mark = equity + sum(p["side"] * (last[c] - p["entry"]) * p["size"] for c, p in pos.items())
         peak = max(peak, mark)
@@ -101,6 +142,7 @@ def simulate(prepared, cfg, equity=100.0, sz_decimals=None, start=None, end=None
         "max_drawdown_pct": round(100 * max_dd, 2),
         "profit_factor": round(sum(wins) / -sum(losses), 2) if losses and sum(losses) else None,
         "fees_paid_usd": round(fees_paid, 2),
+        "funding_paid_usd": round(funding_paid, 2),
     }
     if len(prepared) > 1:
         by = {}
@@ -112,17 +154,21 @@ def simulate(prepared, cfg, equity=100.0, sz_decimals=None, start=None, end=None
     return out
 
 
-def backtest(candles, cfg, equity=100.0, sz_decimals=5, live=None):
-    """One coin, whole history."""
-    r = simulate({"": prepare(candles, cfg, live)}, cfg, equity, {"": sz_decimals})
+def backtest(candles, cfg, equity=100.0, sz_decimals=5, live=None, funding=None):
+    """One coin, whole history. funding: [(t_ms, hourly rate)] to pay/receive while holding."""
+    r = simulate({"": prepare(candles, cfg, live)}, cfg, equity, {"": sz_decimals},
+                 funding={"": funding} if funding else None)
     warm = cfg["indicators"]["ema_slow"] + cfg["indicators"]["mom_len"] + 2
     r["buy_and_hold_pct"] = round(100 * (candles[-1]["c"] / candles[warm]["o"] - 1), 2)
     return r
 
 
-def history(market, coin, interval, bars=5000):
-    """(candles, funding) for one coin. Funding history is slow to page through, so it's cached in .cache/
-    and only the newer part is fetched on later runs."""
+def history(market, coin, interval, bars=5000, source="hyperliquid"):
+    """(candles, funding as [(t_ms, hourly rate)]) for one coin, cached in .cache/ so later runs only fetch what's new.
+    source "hyperliquid": the most recent 5000 bars (~2.3 years of 4h). "binance": since 2020 from Binance's
+    USDT perp, for coins listed there; it trades like Hyperliquid's market but gives 3x the history."""
+    if source == "binance":
+        return binance_history(coin, interval)
     from data import INTERVAL_MS
     candles = market.candles(coin, interval, bars)
     end = candles[-1]["t"] + INTERVAL_MS[interval]
@@ -142,11 +188,32 @@ def history(market, coin, interval, bars=5000):
     return candles, funding
 
 
+def binance_history(coin, interval):
+    import time
+    from data import binance_candles, binance_funding, hourly_funding
+    path = os.path.join(CACHE, "binance_%s_%s.json" % (coin, interval))
+    try:
+        with open(path) as f:
+            d = json.load(f)
+    except FileNotFoundError:
+        d = {"candles": [], "funding": []}
+    now = int(time.time() * 1000)
+    d["candles"] += binance_candles(coin, interval, d["candles"][-1]["t"] + 1 if d["candles"] else BINANCE_START, now)
+    d["funding"] += binance_funding(coin, d["funding"][-1][0] + 1 if d["funding"] else BINANCE_START, now)
+    if not d["candles"]:
+        raise SystemExit("Binance has no %sUSDT perp history" % coin)
+    os.makedirs(CACHE, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(d, f)
+    return d["candles"], hourly_funding([tuple(x) for x in d["funding"]])
+
+
 if __name__ == "__main__":
     from data import Market, fear_greed_history
     ap = argparse.ArgumentParser()
     ap.add_argument("--coin", default="BTC")
     ap.add_argument("--interval")
+    ap.add_argument("--source", choices=["hyperliquid", "binance"], default="hyperliquid")
     ap.add_argument("--config", default="config.json")
     ap.add_argument("--equity", type=float, default=100)
     a = ap.parse_args()
@@ -154,10 +221,10 @@ if __name__ == "__main__":
     interval = a.interval or cfg["interval"]
     m = Market()
     m.refresh()
-    candles, funding = history(m, a.coin, interval)  # Hyperliquid serves the most recent 5000 bars
+    candles, funding = history(m, a.coin, interval, source=a.source)
     days = (candles[-1]["t"] - candles[0]["t"]) / 86_400_000
-    print("%s %s: %d bars (%.0f days)" % (a.coin, interval, len(candles), days))
+    print("%s %s from %s: %d bars (%.0f days)" % (a.coin, interval, a.source, len(candles), days))
     szd = m.meta[a.coin]["szDecimals"]
     live = {"funding": funding, "fear_greed": fear_greed_history()}
-    print(json.dumps({"technical_only": backtest(candles, cfg, a.equity, szd),
-                      "like_live": backtest(candles, cfg, a.equity, szd, live)}, indent=1))
+    print(json.dumps({"technical_only": backtest(candles, cfg, a.equity, szd, funding=funding),
+                      "like_live": backtest(candles, cfg, a.equity, szd, live, funding)}, indent=1))

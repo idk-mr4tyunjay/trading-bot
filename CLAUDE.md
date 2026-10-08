@@ -22,8 +22,11 @@ src/                 application code (run from the repo root)
   bot.py             entrypoint: `run` (trade loop) and `scan` (funding-carry scanner, read-only)
   strategy.py        indicators, factor combine, position sizing — pure, no network
   backtest.py        backtester: prepare() scores bars once, simulate() trades many coins on one account
-                     under max_open_positions; history() caches funding history in .cache/
+                     under max_open_positions and pays historical funding; history() caches candles/funding in
+                     .cache/ from Hyperliquid (last 5000 bars) or Binance (since 2020); luck() = t-stat + bootstrap
   walkforward.py     out-of-sample test: pick thresholds on a train window, trade the next unseen window
+                     (default --source binance: ~5.7 unseen years instead of Hyperliquid's ~1.2)
+  carry.py           funding-carry backtest (long spot + short perp while funding is high). Research only, not traded
   broker.py          PaperBroker (simulated) and HyperliquidBroker (testnet/live)
   data.py            Hyperliquid market data
   ai.py              optional AI signal (OpenRouter / TypeSafe Jev)
@@ -44,7 +47,8 @@ directory**, so always run commands from the repo root (the container's WORKDIR 
 pip install -r requirements.txt
 python tests/test_strategy.py               # must pass before pushing
 python src/backtest.py --coin ETH --interval 4h
-python src/walkforward.py [--top 15]          # honest out-of-sample estimate; first run is slow (funding paging)
+python src/walkforward.py [--source hyperliquid] [--top 15]   # honest out-of-sample estimate (Binance history by default)
+python src/carry.py [--source hyperliquid --coins BTC,ETH,SOL,HYPE]   # funding-carry backtest
 python src/bot.py run                       # mode comes from config.json
 python src/bot.py scan
 python src/ai.py                            # one live AI call to test your key
