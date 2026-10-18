@@ -1,5 +1,5 @@
 """Backtest the strategy on real candles, with fees, slippage and funding payments.
-    python src/backtest.py --coin BTC [--interval 1h] [--source hyperliquid|binance] [--config config.json]
+    python src/backtest.py --coin BTC [--interval 1h] [--source hyperliquid|binance|yahoo] [--config config.json]
 Prints two runs: technical factors only, and "like_live", which replays historical funding and
 Fear & Greed and treats the order book as neutral. News/AI have no history and are left out.
 Both runs pay or receive the historical funding while a position is open.
@@ -73,10 +73,12 @@ def simulate(prepared, cfg, equity=100.0, sz_decimals=None, start=None, end=None
     One account: realized equity sizes each trade and max_open_positions caps them.
     start/end bound the decision times (ms). pnls, if given, collects every trade's P&L, net of both fees and funding.
     funding: {coin: [(t_ms, hourly rate)]} charges longs / pays shorts the historical funding while a position is open.
-    The take profit is a resting limit order, so it pays the maker fee and no slippage."""
+    The take profit is a resting limit order, so it pays the maker fee and no slippage.
+    fees.fixed_per_exit, if set, is a flat charge per closed trade (India's depository charge on a sale)."""
     rk, fees = cfg["risk"], cfg["fees"]
     cost = (fees["taker_pct"] + fees["slippage_pct"]) / 100
     maker = fees.get("maker_pct", fees["taker_pct"]) / 100
+    fixed = fees.get("fixed_per_exit", 0)
     hold_ms = rk["max_hold_hours"] * 3_600_000
     paid = {c: Funding(s) for c, s in (funding or {}).items()}
     steps = {}
@@ -90,9 +92,10 @@ def simulate(prepared, cfg, equity=100.0, sz_decimals=None, start=None, end=None
     def close(coin, px, c=cost):
         nonlocal equity, fees_paid
         p = pos.pop(coin)
-        pnl = p["side"] * (px - p["entry"]) * p["size"] - p["size"] * px * c
+        fee = p["size"] * px * c + fixed
+        pnl = p["side"] * (px - p["entry"]) * p["size"] - fee
         equity += pnl
-        fees_paid += p["size"] * px * c
+        fees_paid += fee
         trades.append((coin, pnl - p["fee"] - p["funding"]))
 
     for t in sorted(steps):
@@ -107,7 +110,8 @@ def simulate(prepared, cfg, equity=100.0, sz_decimals=None, start=None, end=None
             p, bar = pos.get(coin), r["bar"]
             if p:
                 if bar["l"] <= p["sl"] if p["side"] > 0 else bar["h"] >= p["sl"]:
-                    close(coin, p["sl"])
+                    # a bar that opens past the stop (overnight gap) fills at the open, not the stop price
+                    close(coin, min(p["sl"], bar["o"]) if p["side"] > 0 else max(p["sl"], bar["o"]))
                 elif bar["h"] >= p["tp"] if p["side"] > 0 else bar["l"] <= p["tp"]:
                     close(coin, p["tp"], maker)
         for coin, r in steps[t]:
@@ -166,9 +170,12 @@ def backtest(candles, cfg, equity=100.0, sz_decimals=5, live=None, funding=None)
 def history(market, coin, interval, bars=5000, source="hyperliquid"):
     """(candles, funding as [(t_ms, hourly rate)]) for one coin, cached in .cache/ so later runs only fetch what's new.
     source "hyperliquid": the most recent 5000 bars (~2.3 years of 4h). "binance": since 2020 from Binance's
-    USDT perp, for coins listed there; it trades like Hyperliquid's market but gives 3x the history."""
+    USDT perp, for coins listed there; it trades like Hyperliquid's market but gives 3x the history.
+    "yahoo": an NSE stock (coin = its NSE symbol, e.g. RELIANCE), no funding."""
     if source == "binance":
         return binance_history(coin, interval)
+    if source == "yahoo":
+        return yahoo_history(coin, interval)
     from data import INTERVAL_MS
     candles = market.candles(coin, interval, bars)
     end = candles[-1]["t"] + INTERVAL_MS[interval]
@@ -208,23 +215,52 @@ def binance_history(coin, interval):
     return d["candles"], hourly_funding([tuple(x) for x in d["funding"]])
 
 
+def yahoo_history(symbol, interval):
+    """Each fetch returns Yahoo's whole window, which replaces the cached bars it covers (including a bar that was
+    still forming). Cached bars older than the window are kept, so 1h history keeps growing past Yahoo's ~730 days."""
+    import urllib.error
+    from data import YAHOO_INTERVAL, yahoo_candles
+    if interval not in YAHOO_INTERVAL:
+        raise SystemExit("yahoo source supports interval %s" % " or ".join(YAHOO_INTERVAL))
+    path = os.path.join(CACHE, "yahoo_%s_%s.json" % (symbol, interval))
+    try:
+        with open(path) as f:
+            old = json.load(f)
+    except FileNotFoundError:
+        old = []
+    try:
+        fresh = yahoo_candles(symbol, interval)
+    except urllib.error.HTTPError as e:
+        raise SystemExit("Yahoo has no %s.NS (HTTP %d)" % (symbol, e.code))
+    if not fresh:
+        raise SystemExit("Yahoo returned no %s bars for %s.NS" % (interval, symbol))
+    candles = [x for x in old if x["t"] < fresh[0]["t"]] + fresh
+    os.makedirs(CACHE, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(candles, f)
+    return candles, []
+
+
 if __name__ == "__main__":
     from data import Market, fear_greed_history
     ap = argparse.ArgumentParser()
     ap.add_argument("--coin", default="BTC")
     ap.add_argument("--interval")
-    ap.add_argument("--source", choices=["hyperliquid", "binance"], default="hyperliquid")
+    ap.add_argument("--source", choices=["hyperliquid", "binance", "yahoo"], default="hyperliquid")
     ap.add_argument("--config", default="config.json")
-    ap.add_argument("--equity", type=float, default=100)
+    ap.add_argument("--equity", type=float, help="default: paper_start_equity from the config")
     a = ap.parse_args()
     cfg = json.load(open(a.config))
     interval = a.interval or cfg["interval"]
-    m = Market()
-    m.refresh()
+    equity = a.equity or cfg["paper_start_equity"]
+    m = None
+    if a.source != "yahoo":
+        m = Market()
+        m.refresh()
     candles, funding = history(m, a.coin, interval, source=a.source)
     days = (candles[-1]["t"] - candles[0]["t"]) / 86_400_000
     print("%s %s from %s: %d bars (%.0f days)" % (a.coin, interval, a.source, len(candles), days))
-    szd = m.meta[a.coin]["szDecimals"]
+    szd = m.meta[a.coin]["szDecimals"] if m else 0  # stocks trade in whole shares
     live = {"funding": funding, "fear_greed": fear_greed_history()}
-    print(json.dumps({"technical_only": backtest(candles, cfg, a.equity, szd, funding=funding),
-                      "like_live": backtest(candles, cfg, a.equity, szd, live, funding)}, indent=1))
+    print(json.dumps({"technical_only": backtest(candles, cfg, equity, szd, funding=funding),
+                      "like_live": backtest(candles, cfg, equity, szd, live, funding)}, indent=1))

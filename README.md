@@ -107,6 +107,30 @@ profit came in 2020, the 2022 crash and 2023. Since mid-2024 the edge is weak (H
 t = 1.15, which can't be told apart from luck). Shorts are essential: long-only made about 0%/yr. Expect strings of
 9–11 losing trades and up to ~9 months below a previous high.
 
+### Indian stocks (NSE): research only, not traded
+
+`config.india.json` with `--source yahoo` tests 10 NIFTY 50 large caps (RELIANCE, HDFCBANK, ICICIBANK, INFY, TCS,
+BHARTIARTL, SBIN, LT, ITC, HINDUNILVR) on Yahoo's free chart API: daily bars since 2000, hourly for only the last
+~730 days. Long only (stocks can't be shorted overnight), no leverage, whole shares, ₹1,00,000 account, 4 open.
+Costs are delivery charges: 0.11% a side (STT 0.1% each way, stamp duty, exchange fees, GST), 0.03% slippage, a
+₹16 depository charge per sale (`fixed_per_exit`) and zero brokerage (Zerodha/Dhan delivery; add yours). Funding,
+Fear & Greed, order book and news are off: they're crypto inputs. A bar that opens past the stop fills at the open.
+
+Walk-forward, 2026-10-18:
+
+| Bars | Unseen windows | Per year | PF | Trades | Same, zero costs | Buy & hold |
+|---|---|---|---|---|---|---|
+| 1d | 104 (2001 → 2026) | **−1.2%** | 0.98 | 2488 | +6.5%/yr, PF 1.22, t = 3.98 | +18.1%/yr |
+| 1h | 8 (2024-11 → 2026-10) | **−25.3%** | 0.59 | 512 | −7.8%/yr, PF 0.86 | −6.2%/yr |
+
+**What it says:** daily bars have a small, real edge before costs (t ≈ 4), and Indian delivery costs eat all of
+it. Hourly has no edge at all; costs just make it lose faster. Buying and holding the same stocks beat both by a
+mile, though that's flattered by survivorship (these are today's large caps). So the India side stops at the backtest.
+
+```bash
+.venv/bin/python src/walkforward.py --config config.india.json --source yahoo --interval 1d
+```
+
 ### Costs of running this
 
 | Item | Cost |

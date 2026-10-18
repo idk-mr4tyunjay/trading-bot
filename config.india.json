@@ -1,0 +1,39 @@
+{
+  "mode": "paper",
+  "coins": ["RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS", "BHARTIARTL", "SBIN", "LT", "ITC", "HINDUNILVR"],
+  "interval": "1d",
+  "lookback_bars": 300,
+  "poll_seconds": 60,
+  "paper_start_equity": 100000,
+
+  "indicators": {"ema_fast": 20, "ema_slow": 50, "rsi_len": 14, "atr_len": 14, "mom_len": 12},
+  "weights": {"trend": 1.0, "momentum": 0.6, "mean_reversion": 0.2, "funding": 0, "orderbook": 0, "fear_greed": 0, "news": 0},
+  "entry_threshold": 0.4,
+  "exit_threshold": 0.2,
+  "allow_short": false,
+
+  "risk": {
+    "risk_per_trade_pct": 1.0,
+    "sl_atr": 2.0,
+    "tp_atr": 4.0,
+    "max_leverage": 1,
+    "max_position_usd": 25000,
+    "max_open_positions": 4,
+    "daily_loss_limit_pct": 5,
+    "max_drawdown_pct": 25,
+    "min_atr_pct": 0.3,
+    "fee_multiple": 3,
+    "max_hold_hours": 240
+  },
+  "fees": {"taker_pct": 0.11, "maker_pct": 0.11, "slippage_pct": 0.03, "fixed_per_exit": 16},
+
+  "ai": {"enabled": false, "provider": "openrouter", "model": ["deepseek/deepseek-v4-flash", "google/gemma-4-26b-a4b-it"],
+         "weight": 0.4, "flat_veto": 0.6, "min_confidence": 0.0, "timeout_s": 45},
+  "news": {
+    "enabled": false,
+    "feeds": [],
+    "refresh_minutes": 60,
+    "risk_event_threshold": 0.7,
+    "flatten_on_risk_event": false
+  }
+}

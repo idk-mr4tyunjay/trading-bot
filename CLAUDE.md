@@ -23,7 +23,8 @@ src/                 application code (run from the repo root)
   strategy.py        indicators, factor combine, position sizing — pure, no network
   backtest.py        backtester: prepare() scores bars once, simulate() trades many coins on one account
                      under max_open_positions and pays historical funding; history() caches candles/funding in
-                     .cache/ from Hyperliquid (last 5000 bars) or Binance (since 2020); luck() = t-stat + bootstrap
+                     .cache/ from Hyperliquid (last 5000 bars), Binance (since 2020) or Yahoo (NSE stocks, no
+                     funding); luck() = t-stat + bootstrap
   walkforward.py     out-of-sample test: pick thresholds on a train window, trade the next unseen window
                      (default --source binance: ~5.7 unseen years instead of Hyperliquid's ~1.2)
   carry.py           funding-carry backtest (long spot + short perp while funding is high). Research only, not traded
@@ -34,6 +35,7 @@ src/                 application code (run from the repo root)
 tests/
   test_strategy.py   offline checks of strategy math + backtester — the CI gate
 config.json          bot settings; the dashboard writes to it at runtime
+config.india.json    NSE stocks backtest settings (long only, delivery costs). Research only: bot.py can't trade it
 .env.example         template for secrets (.env is gitignored)
 Dockerfile, docker-compose.yml, .github/workflows/deploy.yml
 ```
@@ -48,6 +50,7 @@ pip install -r requirements.txt
 python tests/test_strategy.py               # must pass before pushing
 python src/backtest.py --coin ETH --interval 4h
 python src/walkforward.py [--source hyperliquid] [--top 15]   # honest out-of-sample estimate (Binance history by default)
+python src/walkforward.py --config config.india.json --source yahoo --interval 1d   # same for NSE stocks
 python src/carry.py [--source hyperliquid --coins BTC,ETH,SOL,HYPE]   # funding-carry backtest
 python src/bot.py run                       # mode comes from config.json
 python src/bot.py scan

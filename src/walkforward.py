@@ -1,11 +1,13 @@
 """Walk-forward test: pick entry/exit thresholds on a training window, then trade the next unseen window with them.
-    python src/walkforward.py [--source binance|hyperliquid] [--coins BTC,ETH,SOL | --top 15] [--train-days 365]
-                              [--test-days 90] [--max-open N]
+    python src/walkforward.py [--source binance|hyperliquid|yahoo] [--coins BTC,ETH,SOL | --top 15] [--interval 1d]
+                              [--train-days 365] [--test-days 90] [--max-open N] [--config config.json]
 Rolls forward through history and reports only the unseen (out-of-sample) windows, all coins on one account,
 with fees, slippage and historical funding payments. That's the honest estimate: config.json's own values were tuned
 on Hyperliquid's history, so "as configured" is optimistic on that period.
 --source binance (default) tests on Binance's USDT perps since 2020: ~5.7 unseen years instead of Hyperliquid's ~1.2,
 which only serves its latest 5000 bars, so its result also shifts as that window slides.
+--source yahoo tests NSE stocks (python src/walkforward.py --config config.india.json --source yahoo): 1d since 2000,
+1h only for Yahoo's last ~730 days. Today's large caps are survivors too, so that result is also flattered.
 --top picks today's most-traded perps, which favours coins that survived and grew (survivorship bias)."""
 from __future__ import annotations
 
@@ -52,7 +54,8 @@ def buy_hold(prepared, start, end):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--source", choices=["binance", "hyperliquid"], default="binance")
+    ap.add_argument("--source", choices=["binance", "hyperliquid", "yahoo"], default="binance")
+    ap.add_argument("--interval", help="default: the config's interval")
     ap.add_argument("--coins", help="comma separated; default: config.json coins")
     ap.add_argument("--top", type=int, help="use the N most-traded perps instead")
     ap.add_argument("--config", default="config.json")
@@ -63,8 +66,14 @@ def main():
     cfg = json.load(open(a.config))
     if a.max_open:
         cfg["risk"]["max_open_positions"] = a.max_open
-    m = Market()
-    m.refresh()
+    cfg["interval"] = a.interval or cfg["interval"]
+    eq = cfg["paper_start_equity"]  # stocks need a realistic account: whole shares of a ₹1,500 stock don't fit in 100
+    m = None
+    if a.source != "yahoo":
+        m = Market()
+        m.refresh()
+    elif a.top:
+        raise SystemExit("--top ranks Hyperliquid perps; pass --coins for yahoo")
     coins = (top_coins(m, a.top, cfg["interval"], a.train_days + a.test_days) if a.top
              else a.coins.split(",") if a.coins else cfg["coins"])
     fng = fear_greed_history()
@@ -72,11 +81,11 @@ def main():
     for c in coins:
         try:
             candles, funding = history(m, c, cfg["interval"], source=a.source)
-        except SystemExit as e:  # not listed on Binance
+        except SystemExit as e:  # not listed on Binance / Yahoo
             print("skip   %-6s %s" % (c, e), flush=True)
             continue
         prepared[c] = prepare(candles, cfg, {"funding": funding, "fear_greed": fng})
-        szd[c], funds[c] = m.meta[c]["szDecimals"], funding
+        szd[c], funds[c] = m.meta[c]["szDecimals"] if m else 0, funding  # stocks: whole shares
         print("loaded %-6s %s .. %s (%s)" % (c, day(candles[0]["t"]), day(candles[-1]["t"]), a.source), flush=True)
 
     t0 = min(r[0]["t"] for r in prepared.values())
@@ -92,10 +101,10 @@ def main():
         te_end = min(tr_end + a.test_days * DAY, t_end)
         if te_end - tr_end < 30 * DAY:
             break
-        best = max(grid, key=lambda g: simulate(prepared, g, 100, szd, start, tr_end, True, funding=funds)["return_pct"])
-        train = simulate(prepared, best, 100, szd, start, tr_end, True, funding=funds)
-        test = simulate(prepared, best, 100, szd, tr_end, te_end, True, wf_pnl, funds)
-        conf = simulate(prepared, cfg, 100, szd, tr_end, te_end, True, cf_pnl, funds)
+        best = max(grid, key=lambda g: simulate(prepared, g, eq, szd, start, tr_end, True, funding=funds)["return_pct"])
+        train = simulate(prepared, best, eq, szd, start, tr_end, True, funding=funds)
+        test = simulate(prepared, best, eq, szd, tr_end, te_end, True, wf_pnl, funds)
+        conf = simulate(prepared, cfg, eq, szd, tr_end, te_end, True, cf_pnl, funds)
         hold = buy_hold(prepared, tr_end, te_end)
         wf *= 1 + test["return_pct"] / 100
         cf *= 1 + conf["return_pct"] / 100
@@ -118,12 +127,12 @@ def main():
     print("\nout of sample, %d windows (~%d days):" % (len(picks), days))
     print("  walk-forward   %+7.1f%%  (%+.1f%%/yr)  PF %s  %d trades  worst window drawdown %.1f%%" % (
         100 * (wf - 1), yr(wf), pf(wf_pnl), len(wf_pnl), worst_dd))
-    print("  as configured  %+7.1f%%  (%+.1f%%/yr)  PF %s  %d trades  (thresholds %.2f / %.1f from config.json)" % (
-        100 * (cf - 1), yr(cf), pf(cf_pnl), len(cf_pnl), cfg["entry_threshold"], cfg["exit_threshold"]))
+    print("  as configured  %+7.1f%%  (%+.1f%%/yr)  PF %s  %d trades  (thresholds %.2f / %.1f from %s)" % (
+        100 * (cf - 1), yr(cf), pf(cf_pnl), len(cf_pnl), cfg["entry_threshold"], cfg["exit_threshold"], a.config))
     print("  buy & hold     %+7.1f%%  (%+.1f%%/yr)  equal weight, same windows" % (100 * (bh - 1), yr(bh)))
     stable = max(set(picks), key=picks.count)
     print("  most picked thresholds: %.2f / %.1f (%d of %d windows)" % (stable + (picks.count(stable), len(picks))))
-    print("  funding paid: $%+.2f over all windows (negative = received)" % fund_usd)
+    print("  funding paid: %+.2f over all windows (negative = received)" % fund_usd)
     lk = luck(wf_pnl)
     print("  luck check: t = %+.2f, %.0f%% of resampled trade sets lose money -> %s" % (
         lk["t"], 100 * lk["p_loss"], "unlikely to be luck" if lk["t"] >= 2 else

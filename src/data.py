@@ -90,6 +90,26 @@ def hourly_funding(events):
     return out
 
 
+YAHOO_INTERVAL = {"1h": "60m", "1d": "1d"}
+
+
+def yahoo_candles(symbol, interval):
+    """NSE candles for one stock from Yahoo's public chart API (no key), oldest first, split and bonus adjusted.
+    Yahoo serves 1h bars for only the last ~730 days, 1d since 2000. Unofficial, so it can change or rate limit:
+    fine for backtests, not for placing real orders."""
+    q = "range=730d" if interval == "1h" else "period1=946684800&period2=%d" % time.time()
+    return yahoo_parse(json.loads(http_get("https://query1.finance.yahoo.com/v8/finance/chart/%s.NS?interval=%s&%s"
+                                           % (symbol, YAHOO_INTERVAL[interval], q), timeout=30)))
+
+
+def yahoo_parse(raw):
+    r = raw["chart"]["result"][0]
+    q = r["indicators"]["quote"][0]
+    return [{"t": t * 1000, "o": o, "h": h, "l": l, "c": c, "v": v or 0.0}
+            for t, o, h, l, c, v in zip(r["timestamp"], q["open"], q["high"], q["low"], q["close"], q["volume"])
+            if None not in (o, h, l, c)]  # Yahoo leaves missing bars as nulls
+
+
 def fear_greed():
     """alternative.me Crypto Fear & Greed, 0..100, updates daily."""
     return cached("fear_greed", 3600, lambda: int(json.loads(http_get("https://api.alternative.me/fng/?limit=1"))["data"][0]["value"]))

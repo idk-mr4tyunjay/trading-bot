@@ -104,6 +104,8 @@ import copy
 import ui
 ok = copy.deepcopy(cfg)
 assert ui.validate(ok, cfg, {"BTC", "ETH", "SOL"}) is None
+india = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'config.india.json')))
+assert ui.validate(india, india, set(india["coins"])) is None and not india["allow_short"] and india["risk"]["max_leverage"] == 1
 for mutate, expect in [(lambda c: c["risk"].update(risk_per_trade_pct=50), "between"),
                        (lambda c: c.update(coins=["BTC", "NOPE"]), "unknown coins"),
                        (lambda c: c.update(mode="yolo"), "mode"),
@@ -128,6 +130,16 @@ assert got["funding_paid_usd"] < 0, got  # the short collected it
 taker_cfg = dict(cfg, fees={k: v for k, v in cfg["fees"].items() if k != "maker_pct"})
 assert simulate({"A": rows}, cfg, 100, {"A": 5})["fees_paid_usd"] < simulate({"A": rows}, taker_cfg, 100, {"A": 5})["fees_paid_usd"]
 
+# a long entered at 100 (stop 98) whose next bar opens at 90 (overnight gap) is stopped at the open, not at 98
+flat = {"o": 100, "h": 100, "l": 100, "c": 100}
+gap = {"A": [{"bar": flat, "t": 1, "nxt": 100, "f": {"trend": 1.0}, "atr": 1.0},
+             {"bar": {"o": 90, "h": 91, "l": 89, "c": 90}, "t": 2, "nxt": 90, "f": {"trend": 0.0}, "atr": 1.0}]}
+g = simulate(gap, cfg, 100, {"A": 5})
+assert g["trades"] == 1 and g["return_pct"] < -5, g  # 0.5 coins x -$10, plus fees
+# fixed_per_exit (India's depository charge) is a flat fee on every close
+fixed_cfg = dict(cfg, fees=dict(cfg["fees"], fixed_per_exit=1.0))
+assert abs(simulate(gap, fixed_cfg, 100, {"A": 5})["fees_paid_usd"] - g["fees_paid_usd"] - 1.0) < 0.011
+
 # luck check: a steady winner is unlikely to be chance, a coin flip is
 assert luck([1.0, -0.5] * 30)["t"] > 2 and luck([1.0, -0.5] * 30)["p_loss"] < 0.05
 assert abs(luck([1.0, -1.0] * 30)["t"]) < 1e-9 and luck([-1.0, 0.5] * 30)["p_loss"] > 0.95
@@ -136,6 +148,11 @@ assert abs(luck([1.0, -1.0] * 30)["t"]) < 1e-9 and luck([-1.0, 0.5] * 30)["p_los
 import data
 hf = data.hourly_funding([(0, 0.0008), (8 * H1, 0.0004)])
 assert len(hf) == 16 and hf[0] == (0, 0.0001) and hf[8] == (8 * H1, 0.00005) and abs(sum(r for _, r in hf) - 0.0012) < 1e-12
+
+# Yahoo NSE candles: seconds -> ms, rows with nulls dropped
+yq = {"open": [10, None, 12], "high": [11, None, 13], "low": [9, None, 11], "close": [10.5, None, 12.5], "volume": [5, None, None]}
+yb = data.yahoo_parse({"chart": {"result": [{"timestamp": [1, 2, 3], "indicators": {"quote": [yq]}}]}})
+assert [b["t"] for b in yb] == [1000, 3000] and yb[1] == {"t": 3000, "o": 12, "h": 13, "l": 11, "c": 12.5, "v": 0.0}, yb
 
 # paper broker: charges funding pro rata, and fills the take profit at its price with the maker fee
 import tempfile
