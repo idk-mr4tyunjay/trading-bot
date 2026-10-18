@@ -1,4 +1,4 @@
-"""Hyperliquid trading bot.
+"""Hyperliquid trading bot. A config with "market": "nse" paper-trades Indian stocks instead (see nse.py).
     python src/bot.py run   [--config config.json]   trade (paper/testnet/live per config "mode")
     python src/bot.py scan  [--config config.json]   funding-rate carry scanner (read-only)
 """
@@ -14,6 +14,7 @@ import time
 
 import data
 import ai
+import nse
 import strategy
 import ui
 from broker import HyperliquidBroker, PaperBroker
@@ -44,6 +45,10 @@ def save_json(path, obj):
     os.replace(path + ".tmp", path)
 
 
+def make_market(cfg):
+    return nse.Market() if cfg.get("market") == "nse" else data.Market(testnet=cfg["mode"] == "testnet")
+
+
 def make_broker(cfg, name):
     if cfg["mode"] == "paper":
         return PaperBroker("state/%s.paper.json" % name, cfg["paper_start_equity"], cfg["fees"])
@@ -53,7 +58,11 @@ def make_broker(cfg, name):
 def run(cfg, name, cfg_path):
     mode = cfg["mode"]
     assert mode in ("paper", "testnet", "live"), "mode must be paper, testnet or live"
-    market = data.Market(testnet=mode == "testnet")
+    is_nse = cfg.get("market") == "nse"
+    cur = "₹" if is_nse else "$"  # for log lines (the dashboard shows the last 40)
+    if is_nse and nse.rules(cfg):
+        raise SystemExit("%s: %s" % (cfg_path, nse.rules(cfg)))
+    market = make_market(cfg)
     broker = make_broker(cfg, name)
     st = load_json("state/%s.risk.json" % name, {"day": "", "day_start": 0, "peak": 0, "last_bar": {}})
     st.setdefault("paused", None)
@@ -61,15 +70,21 @@ def run(cfg, name, cfg_path):
     ui.start(cfg_path, os.environ.get("UI_HOST", "127.0.0.1"), int(os.environ.get("UI_PORT", "8090")))
     last, mids, eq, err = {}, {}, 0.0, None
     decisions = open("logs/%s.decisions.jsonl" % name, "a")
+    if is_nse:  # the dashboard's chart asks the bot for candles: the browser can't reach Yahoo
+        ui.candles = lambda coin: market.candles(coin, cfg["interval"], 320)
+        market.watch = set(cfg["coins"])
     market.refresh()
     unknown = [c for c in cfg["coins"] if c not in market.meta]
-    assert not unknown, "not Hyperliquid perps: %s" % unknown
+    assert not unknown, "unknown symbols for this market: %s" % unknown
     log.info("starting %s mode=%s coins=%s interval=%s ai=%s", name, mode, cfg["coins"], cfg["interval"], cfg["ai"]["provider"] if cfg["ai"]["enabled"] else "off")
 
     while True:
         rk, ind = cfg["risk"], cfg["indicators"]
         try:
+            if is_nse:
+                market.watch = set(cfg["coins"]) | set(broker.positions())  # held stocks dropped from config still need prices
             market.refresh()
+            is_open = market.is_open()  # NSE: no decisions outside 09:15-15:30 IST, positions just wait
             mids = market.mids()
             broker.check_stops(mids)
             broker.accrue_funding({c: float(x.get("funding") or 0) for c, x in market.ctx.items()}, mids)
@@ -82,8 +97,8 @@ def run(cfg, name, cfg_path):
                 st["day"], st["day_start"] = today, eq
             st["peak"] = max(st["peak"], eq)
             if eq < st["peak"] * (1 - rk["max_drawdown_pct"] / 100) and not (st["paused"] or "").startswith("kill"):
-                log.critical("KILL SWITCH: equity $%.2f is %.0f%% below peak $%.2f. Flattening and pausing.",
-                             eq, rk["max_drawdown_pct"], st["peak"])
+                log.critical("KILL SWITCH: equity %s%.2f is %.0f%% below peak %s%.2f. Flattening and pausing.",
+                             cur, eq, rk["max_drawdown_pct"], cur, st["peak"])
                 for c in positions:
                     broker.close(c, mids.get(c), "kill switch")
                 positions = broker.positions()
@@ -106,13 +121,16 @@ def run(cfg, name, cfg_path):
 
             for coin in cfg["coins"]:
                 candles = market.candles(coin, cfg["interval"], cfg["lookback_bars"] + 1)[:-1]  # closed bars only
-                if len(candles) < ind["ema_slow"] + ind["mom_len"] + 2 or st["last_bar"].get(coin) == [candles[-1]["t"], cfg["interval"]]:
-                    continue  # decide once per new closed bar
-                st["last_bar"][coin] = [candles[-1]["t"], cfg["interval"]]
+                if len(candles) < ind["ema_slow"] + ind["mom_len"] + 2:
+                    continue
+                if st["last_bar"].get(coin) == [candles[-1]["t"], cfg["interval"]] and (is_open or coin in last):
+                    continue  # decide once per new closed bar (while NSE is closed: score once, for the dashboard)
+                if is_open:
+                    st["last_bar"][coin] = [candles[-1]["t"], cfg["interval"]]
 
                 factors, info = strategy.technical(candles, ind)
                 ctx = market.ctx[coin]
-                factors["funding"] = strategy.factor_funding(float(ctx["funding"]))
+                factors["funding"] = strategy.factor_funding(float(ctx["funding"])) if "funding" in ctx else None
                 factors["orderbook"] = market.book_imbalance(coin) if cfg["weights"].get("orderbook") else None
                 factors["fear_greed"] = strategy.factor_fear_greed(fng) if fng is not None else None
                 factors["news"] = news_sent
@@ -126,15 +144,19 @@ def run(cfg, name, cfg_path):
                                           cfg["ai"], HORIZON.get(cfg["interval"], "several bars"))
                 score = strategy.blend_ai(rules, jp, cfg["ai"]["weight"])
                 price = mids.get(coin, info["price"])
-                decisions.write(json.dumps({"t": int(time.time()), "coin": coin, "price": price, "factors": factors,
-                                            "rules": round(rules, 3), "ai": jp, "score": round(score, 3)}) + "\n")
-                decisions.flush()
+                if is_open:
+                    decisions.write(json.dumps({"t": int(time.time()), "coin": coin, "price": price, "factors": factors,
+                                                "rules": round(rules, 3), "ai": jp, "score": round(score, 3)}) + "\n")
+                    decisions.flush()
                 log.info("%s px=%s score=%+.2f rules=%+.2f ai=%s", coin, price, score, rules,
                          {k: round(v, 2) for k, v in jp.items() if v is not None} if jp else "-")
 
                 last[coin] = {"t": int(time.time()), "price": price, "score": round(score, 3), "rules": round(rules, 3),
                               "ai": jp, "factors": {k: None if v is None else round(v, 3) for k, v in factors.items()},
                               "rsi": round(info["rsi"]), "note": "holding"}
+                if not is_open:
+                    last[coin]["note"] = "market closed: decides at the next open"
+                    continue
                 if pos:  # exits: signal flipped against us, or held too long
                     if pos["side"] * score <= -cfg["exit_threshold"]:
                         broker.close(coin, price, "signal flipped (%+.2f)" % score)
@@ -177,8 +199,8 @@ def run(cfg, name, cfg_path):
                 last[coin]["note"] = "open failed, see log"
                 if broker.open(coin, is_buy, size, price, sl, tp, lev, szd):
                     last[coin]["note"] = "opened " + ("long" if is_buy else "short")
-                    log.info("OPEN %s %s %s ($%.0f) @ %s sl=%.6g tp=%.6g score=%+.2f", "LONG" if is_buy else "SHORT",
-                             size, coin, size * price, price, sl, tp, score)
+                    log.info("OPEN %s %s %s (%s%.0f) @ %s sl=%.6g tp=%.6g score=%+.2f", "LONG" if is_buy else "SHORT",
+                             size, coin, cur, size * price, price, sl, tp, score)
 
             if not st["equity_hist"] or time.time() - st["equity_hist"][-1][0] > 1800:
                 st["equity_hist"] = (st["equity_hist"] + [[int(time.time()), round(eq, 2)]])[-1500:]
@@ -193,9 +215,12 @@ def run(cfg, name, cfg_path):
                 "fear_greed": fng, "news_sentiment": news_sent, "news_risk": risk_p, "headlines": titles[:8],
                 "ai": dict(ai.spend, enabled=cfg["ai"]["enabled"], provider=cfg["ai"]["provider"]),
                 "valid_coins": sorted(market.meta), "error": None, "log": tail("logs/%s.log" % name, 40)})
+            if is_nse:
+                ui.snapshot.update(market_open=is_open, next_decision=nse.next_decision(cfg["interval"], time.time()),
+                                   markets=market.quotes)
             err = None
-            log.info("equity $%.2f | day start $%.2f | peak $%.2f | open %s | ai calls %d ($%.4f)", eq, st["day_start"],
-                     st["peak"], list(broker.positions()), ai.spend["calls"], ai.spend["usd"])
+            log.info("equity %s%.2f | day start %s%.2f | peak %s%.2f | open %s | ai calls %d ($%.4f)", cur, eq, cur,
+                     st["day_start"], cur, st["peak"], list(broker.positions()), ai.spend["calls"], ai.spend["usd"])
         except Exception as e:
             log.exception("loop error (will retry)")
             err = "%s: %s" % (type(e).__name__, e)
@@ -230,7 +255,7 @@ def run(cfg, name, cfg_path):
                     new = load_json(cfg_path, cfg)
                     if new["mode"] != cfg["mode"]:
                         log.warning("mode %s -> %s", cfg["mode"], new["mode"])
-                        market, broker = data.Market(testnet=new["mode"] == "testnet"), make_broker(new, name)
+                        market, broker = make_market(new), make_broker(new, name)
                         market.refresh()
                         st.update(day="", peak=0)
                     cfg = new

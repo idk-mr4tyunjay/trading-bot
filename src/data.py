@@ -98,8 +98,12 @@ def yahoo_candles(symbol, interval):
     Yahoo serves 1h bars for only the last ~730 days, 1d since 2000. Unofficial, so it can change or rate limit:
     fine for backtests, not for placing real orders."""
     q = "range=730d" if interval == "1h" else "period1=946684800&period2=%d" % time.time()
-    return yahoo_parse(json.loads(http_get("https://query1.finance.yahoo.com/v8/finance/chart/%s.NS?interval=%s&%s"
-                                           % (symbol, YAHOO_INTERVAL[interval], q), timeout=30)))
+    return yahoo_chart(symbol, "interval=%s&%s" % (YAHOO_INTERVAL[interval], q))
+
+
+def yahoo_chart(symbol, query):
+    return yahoo_parse(json.loads(http_get("https://query1.finance.yahoo.com/v8/finance/chart/%s.NS?%s" % (symbol, query),
+                                           timeout=30)))
 
 
 def yahoo_parse(raw):
@@ -142,6 +146,9 @@ class Market:
         meta, ctxs = self.info.meta_and_asset_ctxs()
         for a, c in zip(meta["universe"], ctxs):
             self.meta[a["name"]], self.ctx[a["name"]] = a, c
+
+    def is_open(self):
+        return True  # crypto trades around the clock
 
     def mids(self):
         return {k: float(v) for k, v in self.info.all_mids().items()}

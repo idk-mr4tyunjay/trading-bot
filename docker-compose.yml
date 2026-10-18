@@ -25,3 +25,31 @@ services:
       homepage.container: trading-bot
     logging:
       options: {max-size: "10m", max-file: "3"}
+
+  # NSE stocks, paper only: same image, its own config, state/log files (named config.india.*) and dashboard port.
+  # No keys needed, so no env_file.
+  trading-bot-india:
+    image: ghcr.io/idk-mr4tyunjay/trading-bot:latest
+    container_name: trading-bot-india
+    restart: unless-stopped
+    command: ["python", "src/bot.py", "run", "--config", "config.india.json"]
+    environment:
+      UI_HOST: 0.0.0.0
+      UI_PORT: "8091"
+    ports:
+      - "127.0.0.1:8091:8091"   # for a Cloudflare Tunnel route (add it in vps-docs, gated by Cloudflare Access)
+      - "10.10.0.1:8091:8091"   # WireGuard only. Never 0.0.0.0: Docker bypasses UFW and the app has no login.
+    volumes:
+      - ./config.india.json:/app/config.india.json   # writable: the UI saves settings here. Must exist BEFORE first `up`.
+      - ./state:/app/state
+      - ./logs:/app/logs
+    labels:
+      homepage.group: Apps
+      homepage.name: Trading Bot (India)
+      homepage.icon: mdi-chart-line
+      homepage.href: http://10.10.0.1:8091
+      homepage.description: NSE stocks, paper
+      homepage.server: my-docker
+      homepage.container: trading-bot-india
+    logging:
+      options: {max-size: "10m", max-file: "3"}

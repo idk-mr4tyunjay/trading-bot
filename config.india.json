@@ -1,4 +1,5 @@
 {
+  "market": "nse",
   "mode": "paper",
   "coins": ["RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS", "BHARTIARTL", "SBIN", "LT", "ITC", "HINDUNILVR"],
   "interval": "1d",

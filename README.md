@@ -107,7 +107,7 @@ profit came in 2020, the 2022 crash and 2023. Since mid-2024 the edge is weak (H
 t = 1.15, which can't be told apart from luck). Shorts are essential: long-only made about 0%/yr. Expect strings of
 9–11 losing trades and up to ~9 months below a previous high.
 
-### Indian stocks (NSE): research only, not traded
+### Indian stocks (NSE): backtest and paper bot, no real money
 
 `config.india.json` with `--source yahoo` tests 10 NIFTY 50 large caps (RELIANCE, HDFCBANK, ICICIBANK, INFY, TCS,
 BHARTIARTL, SBIN, LT, ITC, HINDUNILVR) on Yahoo's free chart API: daily bars since 2000, hourly for only the last
@@ -125,10 +125,19 @@ Walk-forward, 2026-10-18:
 
 **What it says:** daily bars have a small, real edge before costs (t ≈ 4), and Indian delivery costs eat all of
 it. Hourly has no edge at all; costs just make it lose faster. Buying and holding the same stocks beat both by a
-mile, though that's flattered by survivorship (these are today's large caps). So the India side stops at the backtest.
+mile, though that's flattered by survivorship (these are today's large caps). So the India bot only paper trades.
+
+**The paper bot** runs next to the crypto one with its own dashboard on port 8091 (₹, NSE prices from Yahoo via the
+bot, market hours, no funding/Fear & Greed/news cards). It decides only while NSE is open (Mon–Fri 09:15–15:30 IST);
+outside that it shows "Market closed" and holds positions. It needs no keys or `.env` entries. It refuses (at
+startup and on every dashboard save) anything but paper mode, shorts, leverage above 1, the AI signal and a Fear &
+Greed weight, and the dashboard won't close positions while NSE is shut. Run it locally with:
 
 ```bash
 .venv/bin/python src/walkforward.py --config config.india.json --source yahoo --interval 1d
+```
+```bash
+UI_PORT=8091 .venv/bin/python src/bot.py run --config config.india.json
 ```
 
 ### Costs of running this

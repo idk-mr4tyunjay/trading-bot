@@ -29,13 +29,14 @@ src/                 application code (run from the repo root)
                      (default --source binance: ~5.7 unseen years instead of Hyperliquid's ~1.2)
   carry.py           funding-carry backtest (long spot + short perp while funding is high). Research only, not traded
   broker.py          PaperBroker (simulated) and HyperliquidBroker (testnet/live)
-  data.py            Hyperliquid market data
+  data.py            Hyperliquid market data (+ Binance/Yahoo history fetchers)
+  nse.py             Indian stocks: Yahoo quotes/candles, NIFTY 50 universe, market hours, rules an NSE config must follow
   ai.py              optional AI signal (OpenRouter / TypeSafe Jev)
   ui.py, ui.html     dashboard server + page (ui.py loads ui.html from its own dir)
 tests/
   test_strategy.py   offline checks of strategy math + backtester — the CI gate
 config.json          bot settings; the dashboard writes to it at runtime
-config.india.json    NSE stocks backtest settings (long only, delivery costs). Research only: bot.py can't trade it
+config.india.json    NSE stocks, paper only (long only, delivery costs): `bot.py run --config config.india.json`
 .env.example         template for secrets (.env is gitignored)
 Dockerfile, docker-compose.yml, .github/workflows/deploy.yml
 ```
@@ -74,6 +75,9 @@ On the VPS (`/home/ubuntu/docker/apps/trading-bot/`):
   owned by the VPS (real keys, dashboard-saved settings) and CI never touches them.
 - `state/` and `logs/` are bind-mounted and persist across deploys.
 - The `10.10.0.1` port bind needs `wg0` up first, so Docker is ordered `After=wg-quick@wg0`.
+- A second container, `trading-bot-india`, runs the same image with `config.india.json` (NSE, paper only) and its
+  dashboard on 8091 (`127.0.0.1` + `10.10.0.1`). Its config is seeded only if missing, like `config.json`. A
+  Cloudflare hostname for it is a tunnel route + Access app in `vps-docs`.
 
 ## Conventions
 

@@ -21,6 +21,7 @@ class PaperBroker:
     def __init__(self, path, start_equity, fees):
         self.path, self.cost = path, (fees["taker_pct"] + fees["slippage_pct"]) / 100
         self.maker = fees.get("maker_pct", fees["taker_pct"]) / 100  # take profit rests on the book, like live
+        self.fixed = fees.get("fixed_per_exit", 0)  # flat charge per close (India's depository charge on a sale)
         try:
             with open(path) as f:
                 self.s = json.load(f)
@@ -49,12 +50,12 @@ class PaperBroker:
 
     def close(self, coin, px, reason, maker=False):
         p = self.s["positions"].pop(coin)
-        pnl = p["side"] * (px - p["entry"]) * p["size"] - p["size"] * px * (self.maker if maker else self.cost)
+        pnl = p["side"] * (px - p["entry"]) * p["size"] - p["size"] * px * (self.maker if maker else self.cost) - self.fixed
         self.s["cash"] += pnl
         self.s["closed"].append({"coin": coin, "side": p["side"], "entry": p["entry"], "exit": px, "pnl": round(pnl, 4),
                                  "funding": round(p.get("funding", 0.0), 4), "reason": reason, "at": time.time()})
         self._save()
-        log.info("PAPER close %s @ %s pnl $%.2f (%s)", coin, px, pnl, reason)
+        log.info("PAPER close %s @ %s pnl %+.2f (%s)", coin, px, pnl, reason)
 
     def closed(self):
         return self.s["closed"]

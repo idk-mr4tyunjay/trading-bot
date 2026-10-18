@@ -471,7 +471,7 @@
 
 <div class="app">
   <aside class="side">
-    <div class="logo"><svg><use href="#brand"/></svg><div><b>Trading Bot</b><small>Hyperliquid perps</small></div></div>
+    <div class="logo"><svg><use href="#brand"/></svg><div><b>Trading Bot</b><small id="venue">Hyperliquid perps</small></div></div>
     <nav class="nav" id="nav"></nav>
     <div class="side-foot">
       <div class="botcard"><div class="r"><span class="dot stale" id="sDot"></span><b id="sState">Connecting…</b></div><div class="s" id="sSub">-</div></div>
@@ -632,11 +632,17 @@ const ICONS = { home: "squares-four", candle: "chart-line-up", list: "arrows-lef
 const ic = n => `<i class="ph ph-${ICONS[n] || n} i" aria-hidden="true"></i>`;
 const sk = (w, h) => `<span class="sk" style="width:${w}px;height:${h}px"></span>`;  // skeleton placeholder until the first update
 const sgn = v => v > 0 ? "+" : v < 0 ? "−" : "";
-const usd = (v, signed) => v == null || isNaN(v) ? "-" : (signed ? sgn(v) : v < 0 ? "−" : "") + "$" +
-  Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const compact = v => v == null || isNaN(v) ? "-" : "$" + Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(v);
+const NSE = () => !!CFG && CFG.market === "nse";  // Indian stocks: rupees, prices via the bot, no perps
+const CUR = () => NSE() ? ["₹", "en-IN"] : ["$", "en-US"];
+const usd = (v, signed) => v == null || isNaN(v) ? "-" : (signed ? sgn(v) : v < 0 ? "−" : "") + CUR()[0] +
+  Math.abs(v).toLocaleString(CUR()[1], { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const compact = v => v == null || isNaN(v) ? "-" : !NSE() ? "$" + Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(v)
+  : "₹" + (v >= 1e7 ? (v / 1e7).toLocaleString("en-IN", { maximumFractionDigits: v >= 1e9 ? 0 : 2 }) + " Cr"
+    : v >= 1e5 ? (v / 1e5).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + " L" : v.toLocaleString("en-IN", { maximumFractionDigits: 0 }));
+const ist = t => t ? new Date(t * 1000).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }) + " IST" : "-";
 const pct = (v, d = 2) => v == null || !isFinite(v) ? "-" : sgn(v) + Math.abs(v).toFixed(d) + "%";
 const px = v => { if (v == null || isNaN(v)) return "-"; const a = Math.abs(v);
+  if (NSE()) return Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });  // stocks quote to the paisa
   return Number(v).toLocaleString("en-US", a >= 1000 ? { maximumFractionDigits: 1 } : a >= 100 ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : a >= 1 ? { minimumFractionDigits: 2, maximumFractionDigits: 4 } : { maximumSignificantDigits: 5 }); };
 const num2 = v => sgn(v) + Math.abs(v).toFixed(2);
 const cls = v => v > 0 ? "up" : v < 0 ? "down" : "";
@@ -672,7 +678,7 @@ const GLOSS = {
   oi: ["Open interest", "The total dollar value of all open positions in this market. Higher means more money is involved."],
   vol: ["24h volume", "Dollar value traded in the last 24 hours. Higher volume usually means smoother prices and less slippage."],
   score: ["Bot score", "The bot's combined signal, from −1 (strong short) to +1 (strong long). It only opens a trade when the score goes beyond the entry level (±0.40 by default), and it only checks when a candle closes."],
-  status: ["Status", "What the bot makes of this coin: Neutral (no signal), Leaning long/short (getting close), Long/Short setup (strong enough to trade), or Holding (already in a position)."],
+  status: ["Status", "What the bot makes of this coin: Neutral (no signal), Leaning long/short (getting close), Long/Short setup (strong enough to trade), or Holding (already in a position). With shorts off, a strong negative score shows as Bearish: the bot stays out, and sells if it holds."],
   nextdec: ["Next decision", "Time until the current candle closes. The bot only decides whether to open or close a trade at each close. Stops and targets are still checked every minute."],
   heartbeat: ["Heartbeat", "When the bot last reported in. It runs every minute; if this gets old, the bot or the server may be down."],
   entrytrig: ["Entry trigger", "A coin's score has to go past this, up for a long or down for a short, before the bot opens a trade."],
@@ -719,6 +725,25 @@ const GLOSS = {
   coinpnl: ["P&L", "Total profit or loss from this coin's trades, after fees."],
   log: ["Activity log", "The bot's last 40 log lines, newest at the bottom. Green lines are trades, yellow are warnings, red are errors."],
 };
+const GLOSS_NSE = {
+  mode: ["Mode", "PAPER: practice with simulated money. Indian stocks run in paper mode only, since no broker is connected. The time (e.g. 1D) is the candle size the bot trades on."],
+  positions: ["Open positions", "Shares the bot holds right now. Each one has a stop and a target that sell it automatically. Positions are held overnight and over weekends."],
+  size: ["Size", "How many shares the position holds. The rupee value under the name is shares × price."],
+  perp: ["Market", "NSE-listed shares, bought for delivery: the bot owns them outright, with no leverage and no short selling."],
+  price: ["Price", "The last traded price on NSE, from Yahoo Finance. It can lag a few minutes and refreshes every minute while the market is open."],
+  chg24: ["Today", "How much the price has moved since the previous trading day's close."],
+  vol: ["Value traded", "Rupee value of shares traded today (volume × price). Higher usually means tighter prices and less slippage."],
+  prev: ["Previous close", "The closing price on the last trading day, which today's change is measured from."],
+  dayrange: ["Day range", "Today's lowest and highest traded price."],
+  nextdec: ["Next decision", "When the bot next decides. It decides when a candle closes, and only while NSE is open (Mon–Fri 09:15–15:30 IST). Stops and targets are checked every minute while it's open."],
+  today: ["Today's P&L", "Profit and loss since 00:00 UTC (05:30 IST, before the market opens), including open positions."],
+  dayloss: ["Today's loss", "Loss since 00:00 UTC (05:30 IST). At the limit, the bot opens no new trades until the next day. Open positions keep their stops and targets."],
+  maxpos: ["Open positions", "How many trades are open, out of the most allowed at once, and the most each one can be worth."],
+  watchlist: ["Watchlist", "The stocks the bot trades, with prices from Yahoo Finance. Tap a row to see its chart and why the bot scored it that way."],
+  chart: ["Price chart", "Each candle covers one period (1 day by default): the body runs from the open to the close price, the wicks show the high and low. Green closed higher, red lower. The two lines are moving averages (EMA): fast above slow is an uptrend."],
+  pf: ["Profit factor", "Total won ÷ total lost. Above 1 means the bot made more than it lost: 1.30 means ₹1.30 won for every ₹1 lost."],
+  tradepnl: ["P&L", "Profit or loss of the trade after charges: STT, stamp duty, exchange fees, GST and the depository charge on the sale."],
+};
 const tip = k => GLOSS[k] ? `<button type="button" class="tip" data-tip="${k}" aria-label="What is ${esc(GLOSS[k][0])}?"><i class="ph ph-info" aria-hidden="true"></i></button>` : "";
 const ml = (l, k) => `<span class="ml">${l}${tip(k)}</span>`;  // a table cell's label when the table becomes cards on phones
 let tipKey = null, tipPinned = false;
@@ -754,17 +779,16 @@ let RANGE = Number(store.get("eqRange", 604800)), SEL = store.get("coin", ""), T
 
 // ---------- coin logos: open-source icon set, then Hyperliquid's, then a coloured monogram ----------
 const HUE = c => [...c].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 360, 7);
+const mono = (c, size) => `<span class="cl ${size} mono" style="background:hsl(${HUE(c)} 55% 45%)">${esc(c.replace(/^k(?=[A-Z])/, "").slice(0, 3))}</span>`;
 function logo(c, size = "") {
+  if (NSE()) return mono(c, size);
   const base = c.replace(/^k(?=[A-Z])/, "").toLowerCase();
   return `<img class="cl ${size}" alt="" data-c="${esc(c)}" data-step="0" src="https://cdn.jsdelivr.net/npm/cryptocurrency-icons@0.18.1/svg/color/${esc(base)}.svg" onerror="logoFail(this)">`;
 }
 function logoFail(img) {
   const c = img.dataset.c;
   if (img.dataset.step === "0") { img.dataset.step = "1"; img.src = "https://app.hyperliquid.xyz/coins/" + encodeURIComponent(c) + ".svg"; return; }
-  const m = document.createElement("span");
-  m.className = img.className + " mono"; m.textContent = c.replace(/^k(?=[A-Z])/, "").slice(0, 3);
-  m.style.background = `hsl(${HUE(c)} 55% 45%)`;
-  img.replaceWith(m);
+  img.outerHTML = mono(c, img.className.replace(/\bcl\b/, "").trim());
 }
 
 // ---------- toast + confirm dialog ----------
@@ -913,7 +937,8 @@ async function loadCandles(force) {
   const bs = barSecs(iv) || 14400;
   try {
     if (!CANDLES.length) setMsg("cChart", "Loading " + coin + " chart…");
-    const raw = await hl({ type: "candleSnapshot", req: { coin, interval: iv, startTime: Math.floor((Date.now() / 1000 - bs * 320) * 1000) } });
+    const raw = NSE() ? await api("/api/candles?coin=" + encodeURIComponent(coin))
+      : await hl({ type: "candleSnapshot", req: { coin, interval: iv, startTime: Math.floor((Date.now() / 1000 - bs * 320) * 1000) } });
     if (SEL !== coin) return;
     CANDLES = raw.map(k => ({ t: k.t / 1000, o: +k.o, h: +k.h, l: +k.l, c: +k.c })); cKey = key;
     drawCandles();
@@ -940,8 +965,8 @@ function drawCandles() {
 
   // the open position's entry / stop / target, plus markers for its entry and past exits
   cLines.forEach(l => cSeries.removePriceLine(l)); cLines = [];
-  const pos = (S.positions || []).find(p => p.coin === SEL), bs = barSecs(S.interval) || 14400, t0 = CANDLES[0].t;
-  const snap = t => Math.floor(t / bs) * bs + TZ, marks = [];
+  const pos = (S.positions || []).find(p => p.coin === SEL), t0 = CANDLES[0].t;
+  const snap = t => { let s = t0; for (const k of CANDLES) { if (k.t > t) break; s = k.t; } return s + TZ; }, marks = [];
   if (pos) {
     const L = (price, color, title, style) => cLines.push(cSeries.createPriceLine({ price, color, title, lineWidth: 1, lineStyle: style, axisLabelVisible: true }));
     L(pos.entry, css("--text2"), "Entry", 2);
@@ -957,7 +982,7 @@ function drawCandles() {
 
   $("cLegend").innerHTML = `<span><i style="background:${cF}"></i>EMA ${ind.ema_fast}</span><span><i style="background:${cS}"></i>EMA ${ind.ema_slow}</span>` +
     (pos ? `<span><i style="background:${dn}"></i>Stop</span><span><i style="background:${up}"></i>Target</span>` : "") +
-    `<span>● closed trade</span><span style="margin-left:auto">${esc(S.interval || "")} candles · Hyperliquid${tip("chart")}</span>`;
+    `<span>● closed trade</span><span style="margin-left:auto">${esc(S.interval || "")} candles · ${NSE() ? "Yahoo Finance" : "Hyperliquid"}${tip("chart")}</span>`;
 }
 function renderCharts() {
   if (PAGE === "overview") drawEquity();
@@ -976,9 +1001,10 @@ const FACTORS = {
   orderbook: ["Order book", "Bid vs ask depth"], fear_greed: ["Fear & Greed", "Contrarian market sentiment"], news: ["News", "AI-read headline sentiment"],
 };
 function verdict(score, thr) {
+  const shorts = !CFG || CFG.allow_short;
   if (score >= thr) return ["long", "Long setup"];
-  if (score <= -thr) return ["short", "Short setup"];
-  if (Math.abs(score) >= thr * 0.6) return ["warn", score > 0 ? "Leaning long" : "Leaning short"];
+  if (score <= -thr) return ["short", shorts ? "Short setup" : "Bearish, no shorts"];
+  if (Math.abs(score) >= thr * 0.6) return ["warn", score > 0 ? "Leaning long" : shorts ? "Leaning short" : "Leaning bearish"];
   return ["", "Neutral"];
 }
 function statusPill(coin, d, thr) {
@@ -992,7 +1018,8 @@ function noteText(n) {
   const map = { "holding": "In a position, holding it",
     "no entry: paused": "Would trade, but entries are paused", "no entry: daily loss limit hit": "Would trade, but today's loss limit is hit",
     "no entry: max_open_positions": "Would trade, but max positions is reached", "no entry: shorts disabled": "Short signal, but shorts are off",
-    "no entry: news risk event": "Would trade, but news crash risk is high" };
+    "no entry: news risk event": "Would trade, but news crash risk is high",
+    "market closed: decides at the next open": "NSE is closed; the bot decides at the next open" };
   return map[n] || (n ? n.charAt(0).toUpperCase() + n.slice(1) : "");
 }
 const fngLabel = v => v < 25 ? "Extreme fear" : v < 45 ? "Fear" : v <= 55 ? "Neutral" : v <= 75 ? "Greed" : "Extreme greed";
@@ -1012,10 +1039,10 @@ const chg = m => m && m.prev ? (m.px - m.prev) / m.prev * 100 : null;
 // ======================================================================
 function render() {
   const now = Date.now() / 1000, poll = CFG ? CFG.poll_seconds : 60;
-  const stale = !S.t || now - S.t > Math.max(180, poll * 3), halted = !!(S.paused && S.paused.startsWith("kill"));
+  const stale = !S.t || now - S.t > Math.max(180, poll * 3), halted = !!(S.paused && S.paused.startsWith("kill")), shut = S.market_open === false;
   const P = S.positions || [], C = closedTrades(), thr = CFG ? CFG.entry_threshold : 0.4;
-  $("sDot").className = $("mDot").className = "dot" + (stale ? " stale" : S.paused || S.day_halt ? " paused" : "");
-  $("sState").textContent = !S.t ? "Connecting…" : stale ? "Not responding" : halted ? "Kill switch" : S.paused ? "Paused" : S.day_halt ? "Done for today" : "Running";
+  $("sDot").className = $("mDot").className = "dot" + (stale ? " stale" : S.paused || S.day_halt || shut ? " paused" : "");
+  $("sState").textContent = !S.t ? "Connecting…" : stale ? "Not responding" : halted ? "Kill switch" : S.paused ? "Paused" : S.day_halt ? "Done for today" : shut ? "Market closed" : "Running";
   $("sSub").textContent = S.t ? (stale ? "last seen " : "heartbeat ") + ago(S.t) : "waiting for the bot";
   $("mode").textContent = S.mode ? S.mode + (S.interval ? " · " + S.interval : "") : "-"; $("mode").className = "mode " + (S.mode || "");
   document.querySelectorAll('[data-ct="overview"]').forEach(e => { e.textContent = P.length; e.hidden = !P.length; });
@@ -1053,11 +1080,12 @@ function render() {
     : S.day_halt ? ["pause", "pause", "Done for today", "Daily loss limit hit. Entries resume at 00:00 UTC."]
     : !S.t ? ["pause", "alert", "Connecting…", "Waiting for the bot's first update."]
     : stale ? ["halt", "alert", "Not responding", "The dashboard hasn't heard from the bot recently."]
+    : shut ? ["pause", "pause", "NSE is closed", `It opens ${ist(S.next_decision)}. Open positions are held, and their stops are checked again at the open.`]
     : ["run", "play", "Running", "Scanning for setups and managing open positions."];
-  const bs = barSecs(S.interval), left = bs ? Math.ceil(now / bs) * bs - now : 0;
+  const bs = barSecs(S.interval), left = S.next_decision ? S.next_decision - now : bs ? Math.ceil(now / bs) * bs - now : 0;
   $("statusCard").innerHTML = `<div class="status ${st[0]}"><div class="ic">${ic(st[1])}</div><div><b>${st[2]}</b><span>${esc(st[3])}</span></div></div>
     <div class="facts">
-      <div><small>Next decision${tip("nextdec")}</small>${bs ? "in " + dur(left) : "-"}${bs ? `<div class="barprog"><i style="width:${(1 - left / bs) * 100}%"></i></div>` : ""}</div>
+      <div><small>Next decision${tip("nextdec")}</small>${bs ? "in " + dur(left) : "-"}${bs && !shut ? `<div class="barprog"><i style="width:${clamp(1 - left / bs, 0, 1) * 100}%"></i></div>` : ""}</div>
       <div><small>Heartbeat${tip("heartbeat")}</small>${S.t ? ago(S.t) : "-"}</div>
       <div><small>Entry trigger${tip("entrytrig")}</small>score ±${thr}</div>
       <div><small>Risk per trade${tip("riskper")}</small>${CFG ? CFG.risk.risk_per_trade_pct + "% of equity" : "-"}</div>
@@ -1077,7 +1105,7 @@ function render() {
     $("meters").innerHTML =
       m("Drawdown from peak" + tip("dd"), dd, rk.max_drawdown_pct, `<b>${dd.toFixed(1)}%</b> <span class="muted">of ${rk.max_drawdown_pct}%</span>`, `Peak ${usd(S.peak)}. At the limit the bot closes everything and stops.`) +
       m("Today's loss" + tip("dayloss"), dl, rk.daily_loss_limit_pct, `<b>${dl.toFixed(1)}%</b> <span class="muted">of ${rk.daily_loss_limit_pct}%</span>`, "At the limit, no new trades until 00:00 UTC.") +
-      m("Open positions" + tip("maxpos"), P.length, rk.max_open_positions, `<b>${P.length}</b> <span class="muted">of ${rk.max_open_positions}</span>`, `Max ${usd(rk.max_position_usd)} each, up to ${rk.max_leverage}× leverage.`, true);
+      m("Open positions" + tip("maxpos"), P.length, rk.max_open_positions, `<b>${P.length}</b> <span class="muted">of ${rk.max_open_positions}</span>`, `Max ${usd(rk.max_position_usd)} each, ${NSE() ? "no leverage" : `up to ${rk.max_leverage}× leverage`}.`, true);
   }
 
   // ---- positions ----
@@ -1087,8 +1115,8 @@ function render() {
       const long = p.side > 0, mark = markOf(p), pnl = p.side * (mark - p.entry) * p.size, mv = (mark - p.entry) / p.entry * 100 * p.side;
       const span = p.tp - p.sl, at = span ? clamp((mark - p.sl) / span, 0, 1) * 100 : 50, en = span ? clamp((p.entry - p.sl) / span, 0, 1) * 100 : 50;
       return `<tr class="click" data-coin="${esc(p.coin)}">
-        <td class="hd"><div class="coin">${logo(p.coin)}<div class="nm"><b>${esc(p.coin)} ${sideTag(p.side)}</b><small>${usd(p.size * mark)} notional</small></div></div></td>
-        <td class="r num">${ml("Size", "size")}${p.size} ${esc(p.coin)}</td>
+        <td class="hd"><div class="coin">${logo(p.coin)}<div class="nm"><b>${esc(p.coin)} ${sideTag(p.side)}</b><small>${usd(p.size * mark)} ${NSE() ? "value" : "notional"}</small></div></div></td>
+        <td class="r num">${ml("Size", "size")}${p.size} ${NSE() ? "shares" : esc(p.coin)}</td>
         <td class="r num">${ml("Entry / Mark", "entrymark")}${px(p.entry)}<span class="sub2">${px(mark)}</span></td>
         <td>${ml("Stop → Target", "stoptarget")}${p.sl && p.tp ? `<div><div class="rng"><span class="en" style="left:${en}%"></span><span class="mk" style="left:${at}%"></span></div>
           <div class="rng-l num"><span>${px(p.sl)}</span><span>${px(p.tp)}</span></div></div>` : "-"}</td>
@@ -1102,7 +1130,7 @@ function render() {
   const D = S.decisions || {}, W = watch();
   $("sigMini").innerHTML = W.length ? `<table class="t"><thead><tr><th>Market${tip("perp")}</th><th class="r">Price${tip("price")}</th><th>Bot score${tip("score")}</th><th class="r">Status${tip("status")}</th></tr></thead><tbody>` +
     W.map(c => { const d = D[c], m = MK[c], ch = chg(m);
-      return `<tr class="click" data-coin="${esc(c)}"><td class="hd"><div class="coin">${logo(c)}<div class="nm"><b>${esc(c)}</b><small>${ch != null ? `<span class="${cls(ch)}">${pct(ch)}</span> 24h` : "&nbsp;"}</small></div></div></td>
+      return `<tr class="click" data-coin="${esc(c)}"><td class="hd"><div class="coin">${logo(c)}<div class="nm"><b>${esc(c)}</b><small>${ch != null ? `<span class="${cls(ch)}">${pct(ch)}</span> ${NSE() ? "today" : "24h"}` : "&nbsp;"}</small></div></div></td>
         <td class="r num">${ml("Price", "price")}${px(m ? m.px : d && d.price)}</td>
         <td>${ml("Bot score", "score")}${scoreCell(d, thr)}</td>
         <td class="r">${ml("Status", "status")}${statusPill(c, d, thr)}</td></tr>`; }).join("") + "</tbody></table>"
@@ -1137,23 +1165,28 @@ function renderTicker() {
 }
 
 function renderMarkets() {
-  const W = watch(), D = S.decisions || {}, P = S.positions || [], thr = CFG ? CFG.entry_threshold : 0.4;
+  const W = watch(), D = S.decisions || {}, P = S.positions || [], thr = CFG ? CFG.entry_threshold : 0.4, nse = NSE();
   if (!SEL || !W.includes(SEL)) SEL = W[0] || "";
-  $("mkSub").textContent = MK_ERR ? "Market data unavailable: " + MK_ERR : "Live from Hyperliquid · select a row to chart it";
-  $("mkTable").innerHTML = W.length ? `<table class="t wide"><thead><tr><th>Market${tip("perp")}</th><th class="r">Price${tip("price")}</th><th class="r">24h${tip("chg24")}</th><th class="r">Funding (APR)${tip("funding")}</th><th class="r hide-l">Open interest${tip("oi")}</th><th class="r hide-l">24h volume${tip("vol")}</th><th>Bot score${tip("score")}</th><th class="r">Status${tip("status")}</th></tr></thead><tbody>` +
-    W.map(c => { const m = MK[c], d = D[c], ch = chg(m), apr = m ? m.funding * 24 * 365 * 100 : null;
+  $("mkSub").textContent = MK_ERR ? "Market data unavailable: " + MK_ERR
+    : (nse ? (S.market_open === false ? "NSE closed: last traded prices" : "Yahoo Finance, can lag a few minutes") : "Live from Hyperliquid") + " · select a row to chart it";
+  $("mkTable").innerHTML = W.length ? `<table class="t wide"><thead><tr><th>Market${tip("perp")}</th><th class="r">Price${tip("price")}</th><th class="r">${nse ? "Today" : "24h"}${tip("chg24")}</th>` +
+    (nse ? `<th class="r hide-l">Value traded${tip("vol")}</th>` : `<th class="r">Funding (APR)${tip("funding")}</th><th class="r hide-l">Open interest${tip("oi")}</th><th class="r hide-l">24h volume${tip("vol")}</th>`) +
+    `<th>Bot score${tip("score")}</th><th class="r">Status${tip("status")}</th></tr></thead><tbody>` +
+    W.map(c => { const m = MK[c], d = D[c], ch = chg(m), apr = m && !nse ? m.funding * 24 * 365 * 100 : null;
       return `<tr class="click ${c === SEL ? "sel" : ""}" data-sel="${esc(c)}">
-        <td class="hd"><div class="coin">${logo(c)}<div class="nm"><b>${esc(c)}-USD</b><small>${m ? "Perp · up to " + m.maxLev + "×" : "Perp"}</small></div></div></td>
+        <td class="hd"><div class="coin">${logo(c)}<div class="nm"><b>${esc(c)}${nse ? "" : "-USD"}</b><small>${nse ? "NSE · delivery" : m ? "Perp · up to " + m.maxLev + "×" : "Perp"}</small></div></div></td>
         <td class="r num">${ml("Price", "price")}<b>${px(m ? m.px : d && d.price)}</b></td>
-        <td class="r num ${cls(ch)}">${ml("24h", "chg24")}${pct(ch)}</td>
-        <td class="r num ${cls(apr)}">${ml("Funding (APR)", "funding")}${apr == null ? "-" : pct(apr, 1)}</td>
+        <td class="r num ${cls(ch)}">${ml(nse ? "Today" : "24h", "chg24")}${pct(ch)}</td>` + (nse
+        ? `<td class="r num hide-m hide-l">${ml("Value traded", "vol")}${m ? compact(m.vol) : "-"}</td>`
+        : `<td class="r num ${cls(apr)}">${ml("Funding (APR)", "funding")}${apr == null ? "-" : pct(apr, 1)}</td>
         <td class="r num hide-m hide-l">${ml("Open interest", "oi")}${m ? compact(m.oi) : "-"}</td>
-        <td class="r num hide-m hide-l">${ml("24h volume", "vol")}${m ? compact(m.vol) : "-"}</td>
+        <td class="r num hide-m hide-l">${ml("24h volume", "vol")}${m ? compact(m.vol) : "-"}</td>`) + `
         <td>${ml("Bot score", "score")}${scoreCell(d, thr)}</td>
         <td class="r">${ml("Status", "status")}${statusPill(c, d, thr)}</td></tr>`; }).join("") + "</tbody></table>"
     : `<div class="empty">No coins configured.</div>`;
 
-  // ---- market mood + headlines (shared by all coins) ----
+  // ---- market mood + headlines (shared by all coins); both are crypto inputs, so NSE hides them ----
+  $("mood").closest(".card").hidden = $("news").closest(".card").hidden = nse;
   const fg = S.fear_greed, s = S.news_sentiment, r = S.news_risk, thrR = CFG ? CFG.news.risk_event_threshold : 0.7;
   const pt = (a, rad) => [60 - rad * Math.cos(a), 62 - rad * Math.sin(a)];
   const arc = (a0, a1, col) => { const [x0, y0] = pt(a0, 48), [x1, y1] = pt(a1, 48);
@@ -1172,10 +1205,13 @@ function renderMarkets() {
 
   // ---- selected market ----
   const c = SEL, m = MK[c], d = D[c], pos = P.find(p => p.coin === c), ch = chg(m);
-  $("dHead").innerHTML = c ? `<div class="dhead">${logo(c, "lg")}<div><div style="font-weight:700;font-size:16px">${esc(c)}-USD <span class="muted" style="font-weight:500;font-size:13px">Perpetual</span></div>
+  $("dHead").innerHTML = c ? `<div class="dhead">${logo(c, "lg")}<div><div style="font-weight:700;font-size:16px">${esc(c)}${nse ? "" : "-USD"} <span class="muted" style="font-weight:500;font-size:13px">${nse ? esc(m && m.name || "NSE") : "Perpetual"}</span></div>
       <div style="display:flex;align-items:center;gap:10px"><span class="px num">${px(m ? m.px : d && d.price)}</span>${ch != null ? delta(ch, pct(ch)) : ""}</div></div>
-      <div class="dstats num"><div><small>Price 24h ago${tip("prev")}</small>${m ? px(m.prev) : "-"}</div><div><small>Funding / hour${tip("fundh")}</small><span class="${cls(m && m.funding)}">${m ? pct(m.funding * 100, 4) : "-"}</span></div>
-      <div><small>Open interest${tip("oi")}</small>${m ? compact(m.oi) : "-"}</div>${pos ? `<div><small>Your position</small><span class="${pos.side > 0 ? "up" : "down"}">${pos.side > 0 ? "Long" : "Short"} ${pos.size}</span></div>` : ""}</div></div>` : "";
+      <div class="dstats num">${nse
+        ? `<div><small>Previous close${tip("prev")}</small>${m ? px(m.prev) : "-"}</div><div><small>Day range${tip("dayrange")}</small>${m && m.low ? px(m.low) + " – " + px(m.high) : "-"}</div>
+      <div><small>Value traded${tip("vol")}</small>${m ? compact(m.vol) : "-"}</div>`
+        : `<div><small>Price 24h ago${tip("prev")}</small>${m ? px(m.prev) : "-"}</div><div><small>Funding / hour${tip("fundh")}</small><span class="${cls(m && m.funding)}">${m ? pct(m.funding * 100, 4) : "-"}</span></div>
+      <div><small>Open interest${tip("oi")}</small>${m ? compact(m.oi) : "-"}</div>`}${pos ? `<div><small>Your position</small><span class="${pos.side > 0 ? "up" : "down"}">${pos.side > 0 ? "Long" : "Short"} ${pos.size}</span></div>` : ""}</div></div>` : "";
 
   $("sigWhen").textContent = d ? "checked " + ago(d.t) : "";
   if (!d) {
@@ -1184,7 +1220,7 @@ function renderMarkets() {
   }
   const rsiTxt = d.rsi >= 70 ? "overbought" : d.rsi <= 30 ? "oversold" : "neutral";
   $("dSignal").innerHTML = `<div class="score-big"><b class="num ${cls(d.score)}">${num2(d.score)}</b>${statusPill(c, d, thr)}${tip("score")}</div>
-    ${gauge(d.score, thr)}<div class="gauge-l"><span>−1 short</span><span>trades beyond ±${thr}</span><span>long +1</span></div>
+    ${gauge(d.score, thr)}<div class="gauge-l"><span>−1 ${CFG && !CFG.allow_short ? "bearish" : "short"}</span><span>trades beyond ±${thr}</span><span>long +1</span></div>
     <div class="note"><b>${esc(noteText(d.note))}</b><span class="num">RSI ${d.rsi} (${rsiTxt})${tip("rsi")}${d.ai ? ` · rules-only score ${num2(d.rules)}` : ""}</span></div>
     ${d.ai ? `<div style="margin-top:14px"><div style="font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px">${ic("cpu")}AI opinion${tip("aiop")}</div>
       <div class="ai3"><i style="flex:${d.ai.long}"></i><i style="flex:${d.ai.flat}"></i><i style="flex:${d.ai.short}"></i></div>
@@ -1272,7 +1308,7 @@ const LABELS = {
   risk_event_threshold: ["Crash-risk threshold", "Probability that blocks new entries"], flatten_on_risk_event: ["Close all on risk event"],
 };
 const SECTIONS = [
-  ["General", "Mode, markets and timing", ["mode", "coins", "interval", "poll_seconds", "lookback_bars", "paper_start_equity"]],
+  ["General", "Mode, markets and timing", ["market", "mode", "coins", "interval", "poll_seconds", "lookback_bars", "paper_start_equity"]],
   ["Entries & exits", "When a signal turns into a trade", ["entry_threshold", "exit_threshold", "allow_short"]],
   ["Risk limits", "Position sizing and circuit breakers", ["risk"]],
   ["Signal weights", "How much each factor counts. 0 turns it off.", ["weights"]],
@@ -1282,6 +1318,17 @@ const SECTIONS = [
   ["Fees", "Used for sizing and paper fills", ["fees"]],
 ];
 const SELECTS = { mode: ["paper", "testnet", "live"], interval: ["15m", "30m", "1h", "4h", "1d"], provider: ["openrouter", "typesafe"] };
+const LABELS_NSE = {
+  market: ["Market", "Fixed by the config file. The crypto bot has its own dashboard"],
+  mode: ["Trading mode", "Paper only: no broker is connected for Indian stocks"],
+  coins: ["Stocks", "NSE symbols from the NIFTY 50, comma separated"], interval: ["Candle timeframe", "1d is the only one with an edge before costs"],
+  paper_start_equity: ["Paper starting balance", "₹ used when the paper account is reset"],
+  allow_short: ["Allow shorts", "Must stay off: stocks can't be shorted overnight"],
+  max_leverage: ["Max leverage", "Must stay 1: delivery trades have no leverage"], max_position_usd: ["Max position size", "₹ per stock"],
+  taker_pct: ["Charges per side", "% per buy or sell: STT, stamp duty, exchange fees, GST"], maker_pct: ["Charges on take profit", "% per take-profit sale"],
+  slippage_pct: ["Slippage estimate", "% per buy or sell"], fixed_per_exit: ["Depository charge", "₹ per sale"],
+  "ai.enabled": ["Use AI signal", "Must stay off: the AI prompts are written for crypto"], fear_greed: ["Fear & Greed", "Must stay 0: it's a crypto index"],
+};
 
 function field(key, val, path) {
   const id = "f_" + path.join("_"), [lb, help] = LABELS[path.join(".")] || LABELS[key] || [key.replace(/_/g, " ")];
@@ -1309,6 +1356,8 @@ function read(obj, path) {
 }
 async function loadConfig() {
   CFG = await api("/api/config");
+  if (NSE()) { Object.assign(GLOSS, GLOSS_NSE); Object.assign(LABELS, LABELS_NSE); Object.assign(SELECTS, { mode: ["paper"], interval: ["15m", "30m", "1h", "1d"], market: ["nse"] }); }
+  $("venue").textContent = NSE() ? "NSE stocks · paper" : "Hyperliquid perps";
   const used = new Set(SECTIONS.flatMap(s => s[2])), rest = Object.keys(CFG).filter(k => !used.has(k));
   const secs = SECTIONS.concat(rest.length ? [["Other", "", rest]] : []);
   $("cfgGrid").innerHTML = secs.map(([title, sub, keys], i) => {
@@ -1342,9 +1391,12 @@ async function refresh() {
 }
 async function loadMarkets() {
   try {
-    const [meta, ctx] = await hl({ type: "metaAndAssetCtxs" });
-    meta.universe.forEach((u, i) => { const c = ctx[i]; if (!c) return;
-      MK[u.name] = { px: +(c.midPx || c.markPx), prev: +c.prevDayPx, funding: +c.funding, oi: +c.openInterest * +c.markPx, vol: +c.dayNtlVlm, maxLev: u.maxLeverage }; });
+    if (NSE()) MK = S.markets || {};  // the bot prices NSE stocks: the browser can't reach Yahoo
+    else {
+      const [meta, ctx] = await hl({ type: "metaAndAssetCtxs" });
+      meta.universe.forEach((u, i) => { const c = ctx[i]; if (!c) return;
+        MK[u.name] = { px: +(c.midPx || c.markPx), prev: +c.prevDayPx, funding: +c.funding, oi: +c.openInterest * +c.markPx, vol: +c.dayNtlVlm, maxLev: u.maxLeverage }; });
+    }
     MK_ERR = null;
   } catch (e) { MK_ERR = e.message; }
   renderTicker(); render();

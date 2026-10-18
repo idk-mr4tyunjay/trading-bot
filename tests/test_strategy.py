@@ -166,6 +166,36 @@ assert abs(pb.s["positions"]["BTC"]["funding"] - 0.005) < 1e-6, pb.s  # 0.001 BT
 pb.check_stops({"BTC": 52100})
 c = pb.closed()[-1]
 assert c["exit"] == 52000 and c["reason"] == "take profit" and abs(c["pnl"] - (2.0 - 52 * cfg["fees"]["maker_pct"] / 100)) < 1e-3, c
+# the depository charge comes off every paper close too (10 shares, ₹100 -> ₹101, fees zeroed)
+pi = PaperBroker(os.path.join(tmp, "i.json"), 100000, {"taker_pct": 0, "slippage_pct": 0, "fixed_per_exit": 16})
+pi.open("ITC", True, 10, 100, 90, 120, 1, 0)
+pi.close("ITC", 101, "test")
+assert pi.closed()[-1]["pnl"] == 10 - 16 and pi.s["cash"] == 100000 - 6, pi.s
+
+# NSE: session hours in IST, when the next bar is decided, and what an NSE config may not do
+import nse
+from datetime import datetime
+ist = lambda *a: datetime(*a, tzinfo=nse.IST).timestamp()  # 2026-10-19 is a Monday
+assert nse.is_open(ist(2026, 10, 19, 9, 15)) and nse.is_open(ist(2026, 10, 19, 15, 29))
+assert not nse.is_open(ist(2026, 10, 19, 9, 14)) and not nse.is_open(ist(2026, 10, 19, 15, 30)) and not nse.is_open(ist(2026, 10, 18, 11, 0))
+assert nse.next_decision("1h", ist(2026, 10, 19, 10, 20)) == ist(2026, 10, 19, 11, 15)
+assert nse.next_decision("1h", ist(2026, 10, 23, 15, 20)) == ist(2026, 10, 26, 9, 15)  # Friday's last bar -> Monday's open
+assert nse.next_decision("1d", ist(2026, 10, 19, 10, 0)) == ist(2026, 10, 20, 9, 15)
+assert nse.next_decision("1d", ist(2026, 10, 18, 12, 0)) == ist(2026, 10, 19, 9, 15)  # Sunday
+assert nse.rules(india) is None
+for bad, expect in [({"mode": "live"}, "paper"), ({"allow_short": True}, "short"), ({"interval": "4h"}, "interval"),
+                    ({"risk": dict(india["risk"], max_leverage=2)}, "leverage"), ({"ai": dict(india["ai"], enabled=True)}, "AI")]:
+    assert expect in (nse.rules(dict(india, **bad)) or ""), bad
+    assert expect in (ui.validate(dict(india, **bad), india, set(india["coins"])) or ""), bad
+assert "market" in ui.validate(dict(india, market="hyperliquid"), india, set(india["coins"]))
+# Yahoo quotes: unknown symbols are left out, volume becomes rupees traded
+nse_get = nse.http_get
+nse.http_get = lambda url, timeout=10: json.dumps({"spark": {"result": [
+    {"symbol": "ITC.NS", "response": [{"meta": {"regularMarketPrice": 400.0, "chartPreviousClose": 390.0, "regularMarketVolume": 1000, "longName": "ITC Limited"}}]},
+    {"symbol": "NOPE.NS", "response": [{"meta": {}}]}]}}).encode()
+q = nse.spark(["ITC", "NOPE"])
+nse.http_get = nse_get
+assert set(q) == {"ITC"} and q["ITC"]["px"] == 400.0 and q["ITC"]["prev"] == 390.0 and q["ITC"]["vol"] == 400000.0, q
 
 # live broker: stop is an exchange trigger, target a resting reduce-only Gtc limit at the target price
 orders = []

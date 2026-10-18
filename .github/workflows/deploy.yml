@@ -53,7 +53,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "docker-compose.yml,.env.example,config.json"
+          source: "docker-compose.yml,.env.example,config.json,config.india.json"
           target: "/home/ubuntu/docker/apps/trading-bot/.deploy/"
 
       - name: Deploy over SSH
@@ -69,6 +69,7 @@ jobs:
             # Seed runtime files once; never overwrite real keys or UI-saved settings.
             if [ ! -f .env ]; then cp .deploy/.env.example .env && chmod 660 .env; fi
             if [ ! -f config.json ]; then cp .deploy/config.json config.json; fi
+            if [ ! -f config.india.json ]; then cp .deploy/config.india.json config.india.json; fi
             docker compose pull
             docker compose up -d
             docker image prune -f

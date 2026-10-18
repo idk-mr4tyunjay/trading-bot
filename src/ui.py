@@ -8,12 +8,15 @@ import os
 import queue
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlsplit
 
+import nse
 from data import INTERVAL_MS
 
 log = logging.getLogger("ui")
 commands = queue.Queue()
 snapshot = {}
+candles = None  # NSE only: fn(coin) -> candles, set by the bot (the browser fetches Hyperliquid's itself)
 CMDS = {"pause", "resume", "close", "close_all", "reset_paper", "reload"}
 BOUNDS = {"risk_per_trade_pct": (0.05, 10), "max_leverage": (1, 20), "max_drawdown_pct": (1, 90),
           "daily_loss_limit_pct": (0.5, 50), "poll_seconds": (10, 3600), "entry_threshold": (0, 1),
@@ -45,6 +48,10 @@ def validate(new, old, valid_coins):
         return err
     if new["mode"] not in ("paper", "testnet", "live"):
         return "mode must be paper, testnet or live"
+    if new.get("market") != old.get("market"):
+        return "market can't be changed from the dashboard"
+    if new.get("market") == "nse" and nse.rules(new):
+        return nse.rules(new)
     if new["interval"] not in INTERVAL_MS:
         return "interval must be one of " + ", ".join(INTERVAL_MS)
     bad = [c for c in new["coins"] if c not in valid_coins]
@@ -76,6 +83,12 @@ def start(cfg_path, host, port):
             return json.loads(self.rfile.read(min(n, 200_000)) or b"{}")
 
         def do_GET(self):
+            url = urlsplit(self.path)
+            if url.path == "/api/candles" and candles:
+                coin = parse_qs(url.query).get("coin", [""])[0]
+                if coin not in (snapshot.get("valid_coins") or ()):
+                    return self._send(400, {"error": "unknown coin"})
+                return self._send(200, candles(coin))
             if self.path == "/":
                 with open(page, "rb") as f:
                     self._send(200, f.read(), "text/html; charset=utf-8")
@@ -112,6 +125,8 @@ def start(cfg_path, host, port):
             if self.path == "/api/cmd":
                 if body.get("cmd") not in CMDS:
                     return self._send(400, {"error": "unknown command"})
+                if body["cmd"] in ("close", "close_all") and snapshot.get("market_open") is False:
+                    return self._send(409, {"error": "NSE is closed. Positions can be closed from 09:15 IST, Mon-Fri"})
                 log.warning("UI command: %s", body)
                 commands.put({"cmd": body["cmd"], "coin": str(body.get("coin", ""))})
                 return self._send(200, {"ok": True})
