@@ -81,6 +81,14 @@ On the VPS (`/home/ubuntu/docker/apps/trading-bot/`):
 
 ## Conventions
 
+- **Git identity: every commit is authored and committed as `Mruthunjay <idk.mratyunjay@gmail.com>`.
+  Never any other name or email.** The global git config on this Mac is a work identity
+  (`glitchFe <aryan@gm.markets>`) that must never appear here. This clone pins the right one in
+  `.git/config` (`git config user.name` / `user.email`); a fresh clone doesn't, so check
+  `git config user.email` before the first commit and set it locally if it's wrong.
+  **No co-author trailers** (`Co-Authored-By: Claude` or anyone else): GitHub lists every co-author
+  as a contributor.
+
 - **Never `git push` (or anything that triggers a deploy) until the user explicitly says to.**
   Pushing to `main` deploys straight to the VPS. Committing locally is fine; pushing is not.
 
