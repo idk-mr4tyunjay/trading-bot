@@ -37,7 +37,7 @@ services:
       UI_HOST: 0.0.0.0
       UI_PORT: "8091"
     ports:
-      - "127.0.0.1:8091:8091"   # for a Cloudflare Tunnel route (add it in vps-docs, gated by Cloudflare Access)
+      - "127.0.0.1:8091:8091"   # Cloudflare Tunnel -> trading-india.devtown.lol (gated by Cloudflare Access)
       - "10.10.0.1:8091:8091"   # WireGuard only. Never 0.0.0.0: Docker bypasses UFW and the app has no login.
     volumes:
       - ./config.india.json:/app/config.india.json   # writable: the UI saves settings here. Must exist BEFORE first `up`.
@@ -47,7 +47,7 @@ services:
       homepage.group: Apps
       homepage.name: Trading Bot (India)
       homepage.icon: mdi-chart-line
-      homepage.href: http://10.10.0.1:8091
+      homepage.href: https://trading-india.devtown.lol
       homepage.description: NSE stocks, paper
       homepage.server: my-docker
       homepage.container: trading-bot-india

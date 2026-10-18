@@ -76,8 +76,8 @@ On the VPS (`/home/ubuntu/docker/apps/trading-bot/`):
 - `state/` and `logs/` are bind-mounted and persist across deploys.
 - The `10.10.0.1` port bind needs `wg0` up first, so Docker is ordered `After=wg-quick@wg0`.
 - A second container, `trading-bot-india`, runs the same image with `config.india.json` (NSE, paper only) and its
-  dashboard on 8091 (`127.0.0.1` + `10.10.0.1`). Its config is seeded only if missing, like `config.json`. A
-  Cloudflare hostname for it is a tunnel route + Access app in `vps-docs`.
+  dashboard on 8091: https://trading-india.devtown.lol (`oracle` tunnel ingress -> `localhost:8091`, wildcard
+  Access gate) and http://10.10.0.1:8091 (WireGuard). Its config is seeded only if missing, like `config.json`.
 
 ## Conventions
 
